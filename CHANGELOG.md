@@ -27,10 +27,12 @@
 - **2026-04-24** GitHub Environment `production` защищён Required reviewers — `cd-backend-prod.yml` не сработает без ручного одобрения Максима. Правило «prod deploy только по разрешению» закрыто на уровне платформы.
 - `.gitattributes` добавлен — LF enforcement для shell-скриптов, критично для Linux VPS.
 
+### Fixed
+- **2026-04-24** Vercel build fail `pnpm install --frozen-lockfile exit 1` (headless install без lockfile). Причина: workspace lockfile лежал на уровень выше Root Directory `frontend/` и Vercel его не видел. Решение — отложили pnpm workspace до появления shared-пакетов (ADR-0007), lockfile перенесён в `frontend/pnpm-lock.yaml`.
+
 ### Pending
 - Заливка GitHub Secrets (после явного разрешения Максима). Список — в `infra/README.md` и `.env.example`.
-- Включить Environment protection для `production` (Settings → Environments → required reviewers).
-- Привязка Vercel-проекта к репо (Root Directory = `frontend`).
+- Привязка Vercel к GitHub repo (vercel git connect) после первого успешного preview.
 - Выделение dev VPS, генерация Telethon session вручную на VPS.
 - Первая миграция БД (FEATURE-02, FEATURE-03 схемы) — Sprint 1.
 

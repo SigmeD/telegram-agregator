@@ -1,3 +1,0 @@
-packages:
-  - "frontend"
-  # Задел: сюда добавятся shared-пакеты (UI-kit, API-client generator из OpenAPI)
