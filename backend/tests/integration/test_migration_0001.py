@@ -25,9 +25,7 @@ EXPECTED_TABLES = {
 async def test_migration_creates_all_expected_tables(db_engine: AsyncEngine) -> None:
     async with db_engine.connect() as conn:
         result = await conn.execute(
-            text(
-                "SELECT table_name FROM information_schema.tables " "WHERE table_schema = 'public'"
-            )
+            text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
         )
         tables = {row[0] for row in result.all()}
     assert EXPECTED_TABLES.issubset(tables)
@@ -171,8 +169,7 @@ async def test_fk_restrict_prevents_source_delete_with_messages(
 async def test_unique_source_chat_id(db_session: AsyncSession) -> None:
     await db_session.execute(
         text(
-            "INSERT INTO telegram_sources (chat_id, title, source_type) "
-            "VALUES (42, 'a', 'channel')"
+            "INSERT INTO telegram_sources (chat_id, title, source_type) VALUES (42, 'a', 'channel')"
         )
     )
     await db_session.flush()

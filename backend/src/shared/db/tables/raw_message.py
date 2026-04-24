@@ -42,9 +42,7 @@ class RawMessage(Base):
             name="uq_raw_messages_source_id_telegram_message_id",
         ),
         CheckConstraint(
-            "processing_status IN ("
-            "'pending','filtered_out','analyzing','lead','not_lead','error'"
-            ")",
+            "processing_status IN ('pending','filtered_out','analyzing','lead','not_lead','error')",
             name="processing_status_valid",
         ),
         Index("ix_raw_messages_processing_status", "processing_status"),
