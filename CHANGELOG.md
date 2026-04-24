@@ -30,6 +30,7 @@
 ### Fixed
 - **2026-04-24** Vercel build fail `pnpm install --frozen-lockfile exit 1` (headless install без lockfile). Причина: workspace lockfile лежал на уровень выше Root Directory `frontend/` и Vercel его не видел. Решение — отложили pnpm workspace до появления shared-пакетов (ADR-0007), lockfile перенесён в `frontend/pnpm-lock.yaml`.
 - **2026-04-24** Vercel build fail на `globals.css` (Next.js webpack error). Причина: postcss.config.mjs использовал `@tailwindcss/postcss`, но этот пакет не был в package.json (Tailwind 4 выпустил PostCSS-плагин отдельно). Решение — добавлены `@tailwindcss/postcss` и `postcss` в devDependencies.
+- **2026-04-24** Vercel git-triggered deploys падали с 0ms error. Две причины: (1) dashboard-стэйт проекта хранил старый ignoreCommand `git diff ... ../pnpm-lock.yaml`, невалидный после переноса lockfile; vercel.json обновляет только CLI-deploys, не git-webhooks. (2) Project rootDirectory был null → Vercel клонил в корень репо и команда билда не находила frontend/. Решение — через Vercel REST API: обнулён commandForIgnoringBuildStep, установлен rootDirectory=frontend.
 
 ### Added
 - **2026-04-24** Первый успешный Vercel preview-деплой: https://telegram-agregator-ezxlixyl4-maxeroxinllm-5214s-projects.vercel.app (target=preview, Ready, 47s build). Требует авторизации через Vercel SSO (Deployment Protection включён — это ОК для внутренней dev-площадки).
