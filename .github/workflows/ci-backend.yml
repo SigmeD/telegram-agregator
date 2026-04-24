@@ -28,7 +28,7 @@ defaults:
 
 jobs:
   lint:
-    name: lint (ruff + black + mypy)
+    name: lint (ruff + mypy)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -55,8 +55,6 @@ jobs:
         run: uv run ruff check src tests
       - name: Ruff format check
         run: uv run ruff format --check src tests
-      - name: Black
-        run: uv run black --check src tests
       - name: Mypy
         run: uv run mypy src
 
