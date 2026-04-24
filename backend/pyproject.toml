@@ -1,0 +1,157 @@
+[project]
+name = "tlg-lead-aggregator"
+version = "0.1.0"
+description = "Telegram Lead Aggregator backend: listener, worker, API and notification bot."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [
+    { name = "Maksim Erokhin", email = "max.eroxin.llm@gmail.com" },
+]
+
+dependencies = [
+    # Telegram stack
+    "telethon>=1.34,<2.0",
+    "aiogram>=3.4,<4.0",
+    # Web / API
+    "fastapi>=0.110,<1.0",
+    "uvicorn[standard]>=0.29,<1.0",
+    "httpx>=0.27,<1.0",
+    # Data layer
+    "sqlalchemy[asyncio]>=2.0,<3.0",
+    "alembic>=1.13,<2.0",
+    "asyncpg>=0.29,<1.0",
+    "redis>=5.0,<6.0",
+    # Background jobs
+    "celery>=5.3,<6.0",
+    # LLM providers
+    "anthropic>=0.25,<1.0",
+    "openai>=1.20,<2.0",
+    # Configuration / serialization
+    "pydantic>=2.6,<3.0",
+    "pydantic-settings>=2.2,<3.0",
+    "pyyaml>=6.0,<7.0",
+    # Observability
+    "structlog>=24.1,<25.0",
+    "prometheus-client>=0.20,<1.0",
+    "sentry-sdk>=1.45,<3.0",
+    # Auth helpers
+    "pyjwt>=2.8,<3.0",
+    "cryptography>=42.0,<43.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.1,<9.0",
+    "pytest-asyncio>=0.23,<1.0",
+    "pytest-cov>=5.0,<6.0",
+    "ruff>=0.3,<1.0",
+    "black>=24.3,<25.0",
+    "mypy>=1.9,<2.0",
+    "testcontainers[postgres,redis]>=4.2,<5.0",
+]
+
+[project.scripts]
+tlg-listener = "listener.__main__:main"
+tlg-worker = "worker.celery_app:main"
+tlg-api = "api.main:main"
+tlg-bot = "bot.__main__:main"
+
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shared", "src/listener", "src/worker", "src/api", "src/bot"]
+
+[tool.uv.workspace]
+members = ["."]
+
+# ---------------------------------------------------------------------------
+# Ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "C4",  # comprehensions
+    "SIM", # simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501", # handled by black
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["N802", "N803"]
+"migrations/**" = ["E402", "F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["shared", "listener", "worker", "api", "bot"]
+
+# ---------------------------------------------------------------------------
+# Black
+# ---------------------------------------------------------------------------
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+extend-exclude = "migrations/versions"
+
+# ---------------------------------------------------------------------------
+# Mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+no_implicit_optional = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+explicit_package_bases = true
+namespace_packages = true
+
+[[tool.mypy.overrides]]
+module = ["telethon.*", "celery.*", "testcontainers.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src",
+    "--cov-report=term-missing",
+]
+markers = [
+    "unit: fast unit tests without external dependencies",
+    "integration: tests that require testcontainers (Postgres, Redis)",
+    "slow: long-running tests",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = ["src/*/__main__.py", "migrations/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

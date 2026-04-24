@@ -1,0 +1,55 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          if [[ ! -f CHANGELOG.md ]]; then
+            echo "CHANGELOG.md missing — falling back to tag annotation."
+            git tag -l --format='%(contents)' "$TAG" > notes.md
+          else
+            # Extract section for the current version: keep content between
+            # `## [VERSION]` and the next `## [` heading.
+            awk -v ver="${VERSION}" '
+              BEGIN { inblk = 0 }
+              /^##[[:space:]]*\[/ {
+                if (inblk) { exit }
+                if ($0 ~ "\\[" ver "\\]") { inblk = 1; next }
+              }
+              inblk { print }
+            ' CHANGELOG.md > notes.md
+            if [[ ! -s notes.md ]]; then
+              echo "No section for ${VERSION} found in CHANGELOG.md — using git log."
+              git log --pretty='- %s (%h)' "$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || git rev-list --max-parents=0 HEAD)..${TAG}" > notes.md
+            fi
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.notes.outputs.tag }}
+          name: ${{ steps.notes.outputs.tag }}
+          body_path: notes.md
+          draft: false
+          prerelease: ${{ contains(steps.notes.outputs.tag, '-rc') || contains(steps.notes.outputs.tag, '-beta') || contains(steps.notes.outputs.tag, '-alpha') }}

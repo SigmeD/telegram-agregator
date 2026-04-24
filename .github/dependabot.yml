@@ -1,0 +1,61 @@
+version: 2
+updates:
+  # --- Python backend ----------------------------------------------------
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Moscow"
+    open-pull-requests-limit: 5
+    labels: ["deps", "backend"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    ignore:
+      - dependency-name: "telethon"
+        update-types: ["version-update:semver-major"]
+
+  # --- Frontend (pnpm via npm ecosystem) ---------------------------------
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Moscow"
+    open-pull-requests-limit: 5
+    labels: ["deps", "frontend"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      react:
+        patterns: ["react", "react-dom", "@types/react*"]
+      next:
+        patterns: ["next", "eslint-config-next"]
+      testing:
+        patterns: ["vitest", "@testing-library/*", "jsdom"]
+
+  # --- GitHub Actions ----------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels: ["deps", "ci"]
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+
+  # --- Docker base images ------------------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/infra/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels: ["deps", "infra"]
+    commit-message:
+      prefix: "chore(docker)"
+      include: "scope"

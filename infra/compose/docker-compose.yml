@@ -1,0 +1,168 @@
+# -----------------------------------------------------------------------------
+# Base compose stack for Telegram Lead Aggregator backend.
+# Layer with:
+#   docker-compose.dev.yml   — development overrides
+#   docker-compose.prod.yml  — production overrides
+#   docker-compose.override.yml (optional, git-ignored) — local tweaks
+# -----------------------------------------------------------------------------
+# All *_IMAGE / *_TAG vars come from .env next to this file (git-ignored).
+# Secrets (POSTGRES_PASSWORD, API keys, tokens) MUST arrive via env_file or
+# external secret injection — never commit actual values.
+# -----------------------------------------------------------------------------
+name: tlg-aggregator
+
+x-backend-common: &backend-common
+  image: ${BACKEND_IMAGE:-ghcr.io/erohin-m/tlg-aggregator}:${BACKEND_TAG:-latest}
+  env_file:
+    - ../env/backend.env
+  environment:
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-tlg}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-tlg}
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/1
+    CELERY_RESULT_BACKEND: redis://redis:6379/2
+    TLG_SESSION_DIR: /var/lib/tlg/sessions
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+  depends_on:
+    postgres:
+      condition: service_healthy
+      restart: true
+    redis:
+      condition: service_healthy
+      restart: true
+  networks:
+    - tlg
+  # Sensible default; overrides in per-service restart policy below.
+  restart: unless-stopped
+
+services:
+  # ---------------------------------------------------------------------------
+  # Data plane
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tlg}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:-tlg}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - tlg
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--appendonly", "yes",
+        "--maxmemory", "${REDIS_MAXMEMORY:-512mb}",
+        "--maxmemory-policy", "allkeys-lru",
+      ]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - tlg
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # One-shot migrations — MUST finish before listener/worker/api/bot start.
+  # Uses pg_advisory_lock via alembic's env.py to avoid parallel migrations.
+  # ---------------------------------------------------------------------------
+  migrate:
+    <<: *backend-common
+    command: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Application services — all reuse the same image, differ only by ENTRYPOINT.
+  # ---------------------------------------------------------------------------
+  backend-listener:
+    <<: *backend-common
+    command: ["listener"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - session-data:/var/lib/tlg/sessions
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.connect(('redis',6379))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  backend-worker:
+    <<: *backend-common
+    command: ["worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A worker.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  backend-api:
+    <<: *backend-common
+    command: ["api"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  backend-bot:
+    <<: *backend-common
+    command: ["bot"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      backend-api:
+        condition: service_healthy
+
+networks:
+  tlg:
+    driver: bridge
+
+volumes:
+  pg-data:
+    name: tlg-pg-data
+  redis-data:
+    name: tlg-redis-data
+  session-data:
+    name: tlg-session-data

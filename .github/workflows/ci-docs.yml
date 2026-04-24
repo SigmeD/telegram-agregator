@@ -1,0 +1,101 @@
+name: ci-docs
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/workflows/ci-docs.yml"
+  pull_request:
+    paths:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/workflows/ci-docs.yml"
+
+concurrency:
+  group: ci-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  markdownlint:
+    name: markdownlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2@0.14.0
+      - name: Lint markdown
+        run: markdownlint-cli2 "**/*.md" "#node_modules" "#**/.next" "#frontend/**" "#backend/.venv"
+
+  link-check:
+    name: lychee link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --verbose
+            --no-progress
+            --exclude-path node_modules
+            --exclude-path .venv
+            --exclude-path .next
+            **/*.md
+          fail: true
+
+  changelog-touched:
+    name: changelog updated (PR into main)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify CHANGELOG.md is in the diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if git diff --name-only "${BASE_SHA}".."${HEAD_SHA}" | grep -qE '^CHANGELOG\.md$'; then
+            echo "CHANGELOG.md updated."
+          else
+            echo "::error title=Missing CHANGELOG entry::PR to main must touch CHANGELOG.md"
+            exit 1
+          fi
+
+  adr-for-architecture:
+    name: ADR present for architecture-labelled PRs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require ADR when 'architecture' label applied
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          echo "Labels: $LABELS"
+          if echo "$LABELS" | grep -q '"architecture"'; then
+            echo "architecture label is set — looking for docs/adr/*.md changes..."
+            if git diff --name-only "${BASE_SHA}".."${HEAD_SHA}" | grep -qE '^docs/adr/.+\.md$'; then
+              echo "ADR file present."
+            else
+              echo "::error title=Missing ADR::PR labelled 'architecture' must include an ADR under docs/adr/"
+              exit 1
+            fi
+          else
+            echo "No architecture label — skipping ADR check."
+          fi

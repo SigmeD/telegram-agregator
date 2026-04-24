@@ -1,0 +1,101 @@
+name: cd-backend-prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. sha-abc1234 or v1.2.3). Must exist in GHCR."
+        required: true
+        type: string
+      skip_migrations:
+        description: "Skip alembic upgrade head (use only for hotfix without schema change)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+concurrency:
+  group: cd-backend-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/tlg-aggregator
+
+jobs:
+  verify-image:
+    name: verify image exists
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: Check manifest exists
+        run: |
+          set -euo pipefail
+          docker manifest inspect "${REGISTRY}/${IMAGE_NAME}:${{ inputs.image_tag }}" >/dev/null
+          echo "Image ${REGISTRY}/${IMAGE_NAME}:${{ inputs.image_tag }} OK."
+
+  deploy:
+    name: deploy → PROD VPS
+    runs-on: ubuntu-latest
+    needs: verify-image
+    # ===> Manual approval lives here: repo settings → Environments → production
+    environment:
+      name: production
+      url: https://${{ vars.PROD_API_DOMAIN || 'api.example.com' }}/health
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_VPS_HOST }}
+          username: ${{ secrets.PROD_VPS_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          envs: IMAGE_TAG,SKIP_MIGRATIONS,POSTGRES_PASSWORD,ANTHROPIC_API_KEY,OPENAI_API_KEY,TELEGRAM_API_ID,TELEGRAM_API_HASH,NOTIFY_BOT_TOKEN,JWT_SECRET,TELETHON_SESSION_KEY,SENTRY_DSN
+          script_stop: true
+          script: |
+            set -Eeuo pipefail
+            cd /opt/tlg
+            git fetch --depth 1 origin main
+            git checkout -f origin/main
+            export POSTGRES_PASSWORD ANTHROPIC_API_KEY OPENAI_API_KEY TELEGRAM_API_ID \
+                   TELEGRAM_API_HASH NOTIFY_BOT_TOKEN JWT_SECRET TELETHON_SESSION_KEY SENTRY_DSN
+            if [ "${SKIP_MIGRATIONS}" = "true" ]; then
+              bash infra/scripts/deploy.sh prod "${IMAGE_TAG}" --skip-migrations
+            else
+              bash infra/scripts/deploy.sh prod "${IMAGE_TAG}"
+            fi
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          SKIP_MIGRATIONS: ${{ inputs.skip_migrations }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          NOTIFY_BOT_TOKEN: ${{ secrets.NOTIFY_BOT_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          TELETHON_SESSION_KEY: ${{ secrets.TELETHON_SESSION_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      - name: Annotate summary
+        if: always()
+        run: |
+          {
+            echo "### Prod deploy"
+            echo ""
+            echo "- tag: \`${{ inputs.image_tag }}\`"
+            echo "- skip_migrations: \`${{ inputs.skip_migrations }}\`"
+            echo "- actor: @${{ github.actor }}"
+          } >> "$GITHUB_STEP_SUMMARY"

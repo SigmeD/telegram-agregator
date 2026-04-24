@@ -1,0 +1,66 @@
+# -----------------------------------------------------------------------------
+# Dev override — applied on the dev VPS (Hetzner/Timeweb).
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# -----------------------------------------------------------------------------
+name: tlg-aggregator
+
+x-dev-image: &dev-image
+  image: ghcr.io/erohin-m/tlg-aggregator:${BACKEND_TAG:-develop}
+
+services:
+  postgres:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tlg}
+      POSTGRES_DB: ${POSTGRES_DB:-tlg_dev}
+    ports:
+      # Expose for remote psql in dev ONLY — firewall off in prod.
+      - "127.0.0.1:5432:5432"
+
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  migrate:
+    <<: *dev-image
+    environment:
+      ENV: dev
+      LOG_LEVEL: debug
+
+  backend-listener:
+    <<: *dev-image
+    environment:
+      ENV: dev
+      LOG_LEVEL: debug
+    # Hot-reload in dev: mount source on top of the baked-in copy.
+    volumes:
+      - ../../backend/src:/app/src:ro
+      - session-data:/var/lib/tlg/sessions
+
+  backend-worker:
+    <<: *dev-image
+    environment:
+      ENV: dev
+      LOG_LEVEL: debug
+      WORKER_CONCURRENCY: "2"
+    volumes:
+      - ../../backend/src:/app/src:ro
+
+  backend-api:
+    <<: *dev-image
+    environment:
+      ENV: dev
+      LOG_LEVEL: debug
+      API_WORKERS: "1"
+    volumes:
+      - ../../backend/src:/app/src:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  backend-bot:
+    <<: *dev-image
+    environment:
+      ENV: dev
+      LOG_LEVEL: debug
+    volumes:
+      - ../../backend/src:/app/src:ro

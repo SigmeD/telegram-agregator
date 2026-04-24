@@ -1,0 +1,65 @@
+# -----------------------------------------------------------------------------
+# Build context cleaner — keeps images small and avoids leaking local state.
+# Applied from repo root (compose / buildx use `context: ../..`).
+# -----------------------------------------------------------------------------
+
+# VCS / tooling
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+*.swp
+
+# Python
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+**/htmlcov
+**/.tox
+**/.venv
+**/venv
+backend/.venv
+
+# Node / Next.js
+**/node_modules
+**/.next
+**/.turbo
+**/.pnpm-store
+frontend/out
+frontend/coverage
+
+# Tests & local artefacts
+**/tests
+**/test
+**/*.log
+**/*.pid
+**/*.sqlite
+**/*.db
+**/dist
+**/build
+
+# Local env files — must be injected via secrets, NEVER baked in
+.env
+.env.*
+!.env.example
+**/*.env
+**/.envrc
+
+# Docker / compose overrides
+**/docker-compose.override.yml
+**/docker-compose.override.yaml
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Infra state we never want inside an image
+infra/compose/data
+infra/compose/volumes
+infra/nginx/certs

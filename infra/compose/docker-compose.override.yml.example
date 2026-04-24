@@ -1,0 +1,54 @@
+# -----------------------------------------------------------------------------
+# Example local override. Copy to `docker-compose.override.yml` (git-ignored)
+# and edit to taste.
+#
+# Compose auto-merges `docker-compose.override.yml` on top of the base file
+# when no -f flags are passed, so this is what you get for a local build from
+# source without pulling a pre-built image.
+# -----------------------------------------------------------------------------
+name: tlg-aggregator
+
+services:
+  # Build from local source instead of pulling from ghcr.
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.Dockerfile
+    image: tlg-aggregator:local
+
+  backend-listener:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.Dockerfile
+    image: tlg-aggregator:local
+    volumes:
+      - ../../backend/src:/app/src:ro
+      - ../../backend/migrations:/app/migrations:ro
+      - ../../backend/prompts:/app/prompts:ro
+
+  backend-worker:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.Dockerfile
+    image: tlg-aggregator:local
+    volumes:
+      - ../../backend/src:/app/src:ro
+
+  backend-api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.Dockerfile
+    image: tlg-aggregator:local
+    volumes:
+      - ../../backend/src:/app/src:ro
+    environment:
+      API_WORKERS: "1"
+      LOG_LEVEL: debug
+
+  backend-bot:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.Dockerfile
+    image: tlg-aggregator:local
+    volumes:
+      - ../../backend/src:/app/src:ro

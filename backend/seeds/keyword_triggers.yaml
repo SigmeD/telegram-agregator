@@ -1,0 +1,158 @@
+# Стартовый словарь keyword-триггеров (TZ FEATURE-04).
+# Поля:
+#   keyword       — подстрока для поиска (regex-экранирование делает фильтр).
+#   trigger_type  — direct_request | pain_signal | lifecycle_event | negative
+#   weight        — 1..10 (negative игнорирует weight).
+#   language      — ISO-639-1, по умолчанию "ru".
+#   is_active     — флаг включения.
+# Логика: sum(weight of positive matches) >= 5 AND no negative match -> to LLM.
+# ---------------------------------------------------------------------------
+
+triggers:
+  # --- Прямые запросы (weight 10) ----------------------------------------
+  - keyword: "ищу разработчика"
+    trigger_type: direct_request
+    weight: 10
+    language: ru
+    is_active: true
+  - keyword: "ищу разработчиков"
+    trigger_type: direct_request
+    weight: 10
+    language: ru
+    is_active: true
+  - keyword: "нужна команда"
+    trigger_type: direct_request
+    weight: 10
+    language: ru
+    is_active: true
+  - keyword: "нужен MVP"
+    trigger_type: direct_request
+    weight: 10
+    language: ru
+    is_active: true
+  - keyword: "нужен техлид"
+    trigger_type: direct_request
+    weight: 10
+    language: ru
+    is_active: true
+  - keyword: "нужен CTO"
+    trigger_type: direct_request
+    weight: 10
+    language: ru
+    is_active: true
+  - keyword: "ищу подрядчика"
+    trigger_type: direct_request
+    weight: 10
+    language: ru
+    is_active: true
+  - keyword: "ищем студию"
+    trigger_type: direct_request
+    weight: 10
+    language: ru
+    is_active: true
+  - keyword: "порекомендуйте команду"
+    trigger_type: direct_request
+    weight: 10
+    language: ru
+    is_active: true
+  - keyword: "looking for developers"
+    trigger_type: direct_request
+    weight: 10
+    language: en
+    is_active: true
+  - keyword: "need CTO"
+    trigger_type: direct_request
+    weight: 10
+    language: en
+    is_active: true
+
+  # --- Болевые сигналы (weight 7) ----------------------------------------
+  - keyword: "наш подрядчик"
+    trigger_type: pain_signal
+    weight: 7
+    language: ru
+    is_active: true
+  - keyword: "сорвал сроки"
+    trigger_type: pain_signal
+    weight: 7
+    language: ru
+    is_active: true
+  - keyword: "разочаровался"
+    trigger_type: pain_signal
+    weight: 7
+    language: ru
+    is_active: true
+  - keyword: "ищу замену"
+    trigger_type: pain_signal
+    weight: 7
+    language: ru
+    is_active: true
+  - keyword: "фрилансер пропал"
+    trigger_type: pain_signal
+    weight: 7
+    language: ru
+    is_active: true
+  - keyword: "сколько стоит MVP"
+    trigger_type: pain_signal
+    weight: 7
+    language: ru
+    is_active: true
+  - keyword: "как выбрать подрядчика"
+    trigger_type: pain_signal
+    weight: 7
+    language: ru
+    is_active: true
+
+  # --- События жизненного цикла (weight 5) -------------------------------
+  - keyword: "привлекли раунд"
+    trigger_type: lifecycle_event
+    weight: 5
+    language: ru
+    is_active: true
+  - keyword: "подняли инвестиции"
+    trigger_type: lifecycle_event
+    weight: 5
+    language: ru
+    is_active: true
+  - keyword: "закрыли seed"
+    trigger_type: lifecycle_event
+    weight: 5
+    language: ru
+    is_active: true
+  - keyword: "pre-seed"
+    trigger_type: lifecycle_event
+    weight: 5
+    language: ru
+    is_active: true
+  - keyword: "закрыли round"
+    trigger_type: lifecycle_event
+    weight: 5
+    language: ru
+    is_active: true
+
+  # --- Отрицательные маркеры (исключают лид) -----------------------------
+  - keyword: "я разработчик"
+    trigger_type: negative
+    weight: 0
+    language: ru
+    is_active: true
+  - keyword: "ищу работу"
+    trigger_type: negative
+    weight: 0
+    language: ru
+    is_active: true
+  - keyword: "ищу проект"
+    trigger_type: negative
+    weight: 0
+    language: ru
+    is_active: true
+  - keyword: "предлагаю услуги"
+    trigger_type: negative
+    weight: 0
+    language: ru
+    is_active: true
+  - keyword: "портфолио"
+    trigger_type: negative
+    weight: 0
+    language: ru
+    is_active: true

@@ -1,0 +1,149 @@
+name: ci-backend
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - "pyproject.toml"
+      - "infra/docker/backend.Dockerfile"
+      - ".github/workflows/ci-backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "pyproject.toml"
+      - "infra/docker/backend.Dockerfile"
+      - ".github/workflows/ci-backend.yml"
+
+concurrency:
+  group: ci-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  lint:
+    name: lint (ruff + black + mypy)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.x"
+          enable-cache: true
+          cache-dependency-glob: "backend/pyproject.toml"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Sync dev deps
+        run: uv sync --extra dev
+
+      - name: Ruff
+        run: uv run ruff check src tests
+      - name: Ruff format check
+        run: uv run ruff format --check src tests
+      - name: Black
+        run: uv run black --check src tests
+      - name: Mypy
+        run: uv run mypy src
+
+  test-unit:
+    name: tests / unit
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.x"
+          enable-cache: true
+          cache-dependency-glob: "backend/pyproject.toml"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --extra dev
+      - name: Run unit tests
+        run: uv run pytest -m unit -n auto --cov=src --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-unit-${{ matrix.python-version }}
+          path: backend/coverage.xml
+          if-no-files-found: ignore
+
+  test-integration:
+    name: tests / integration
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tlg
+          POSTGRES_PASSWORD: tlg
+          POSTGRES_DB: tlg_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tlg"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://tlg:tlg@localhost:5432/tlg_test
+      SYNC_DATABASE_URL: postgresql://tlg:tlg@localhost:5432/tlg_test
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.x"
+          enable-cache: true
+          cache-dependency-glob: "backend/pyproject.toml"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --extra dev
+
+      - name: Apply alembic migrations
+        run: uv run alembic -c migrations/alembic.ini upgrade head
+
+      - name: Run integration tests
+        run: uv run pytest -m integration --cov=src --cov-report=xml
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-integration-${{ matrix.python-version }}
+          path: backend/coverage.xml
+          if-no-files-found: ignore

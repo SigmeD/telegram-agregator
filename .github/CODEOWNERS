@@ -1,0 +1,4 @@
+# Single owner for the entire monorepo. Adjust when the team grows.
+# Syntax reference: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/customizing-your-repository/about-code-owners
+
+*  @erohin-m

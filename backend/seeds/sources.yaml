@@ -1,0 +1,238 @@
+# Стартовый список Telegram-источников (TZ FEATURE-02).
+# Поля:
+#   title        — человекочитаемое название.
+#   username     — @handle публичного канала/группы (null для приватных).
+#   source_type  — "channel" | "group" | "supergroup".
+#   category     — "founders_chat" | "vc_news" | "accelerator" | "regional".
+#   priority     — 1..10 (8+ обрабатывается в real-time).
+#   is_active    — флаг включения.
+# ---------------------------------------------------------------------------
+
+sources:
+  # --- Чаты основателей --------------------------------------------------
+  - title: Pioneers Club
+    username: pioneersclub
+    source_type: supergroup
+    category: founders_chat
+    priority: 9
+    is_active: true
+
+  - title: Russian Startups
+    username: russianstartups
+    source_type: supergroup
+    category: founders_chat
+    priority: 9
+    is_active: true
+
+  - title: Startup Jedi
+    username: startupjedi
+    source_type: supergroup
+    category: founders_chat
+    priority: 8
+    is_active: true
+
+  - title: No Flame No Game (gamedev founders)
+    username: noflamenogame
+    source_type: supergroup
+    category: founders_chat
+    priority: 7
+    is_active: true
+
+  - title: SaaS Founders CIS
+    username: saasfounderscis
+    source_type: supergroup
+    category: founders_chat
+    priority: 9
+    is_active: true
+
+  - title: ProductHunt RU Founders
+    username: producthuntru
+    source_type: supergroup
+    category: founders_chat
+    priority: 7
+    is_active: true
+
+  - title: Indie Hackers CIS
+    username: indiehackerscis
+    source_type: supergroup
+    category: founders_chat
+    priority: 7
+    is_active: true
+
+  - title: AI Founders RU
+    username: aifoundersru
+    source_type: supergroup
+    category: founders_chat
+    priority: 8
+    is_active: true
+
+  # --- Каналы венчура / новости ------------------------------------------
+  - title: The Runet
+    username: therunet
+    source_type: channel
+    category: vc_news
+    priority: 6
+    is_active: true
+
+  - title: Русский венчур
+    username: rusven
+    source_type: channel
+    category: vc_news
+    priority: 7
+    is_active: true
+
+  - title: Startup of the Day
+    username: startupoftheday
+    source_type: channel
+    category: vc_news
+    priority: 6
+    is_active: true
+
+  - title: The Edinorogi
+    username: theedinorogi
+    source_type: channel
+    category: vc_news
+    priority: 6
+    is_active: true
+
+  - title: VC Barometer
+    username: vcbarometer
+    source_type: channel
+    category: vc_news
+    priority: 5
+    is_active: true
+
+  - title: Startup Hub Daily
+    username: startuphubdaily
+    source_type: channel
+    category: vc_news
+    priority: 5
+    is_active: true
+
+  - title: TechCrunch RU
+    username: techcrunchru
+    source_type: channel
+    category: vc_news
+    priority: 4
+    is_active: true
+
+  # --- Акселераторы ------------------------------------------------------
+  - title: ФРИИ
+    username: iidf
+    source_type: channel
+    category: accelerator
+    priority: 8
+    is_active: true
+
+  - title: Сколково — Startup Village
+    username: skolkovostartup
+    source_type: channel
+    category: accelerator
+    priority: 8
+    is_active: true
+
+  - title: Astana Hub
+    username: astanahub
+    source_type: channel
+    category: accelerator
+    priority: 7
+    is_active: true
+
+  - title: IT Park Uzbekistan
+    username: itparkuz
+    source_type: channel
+    category: accelerator
+    priority: 7
+    is_active: true
+
+  - title: MTS StartUp Hub
+    username: mts_startup
+    source_type: channel
+    category: accelerator
+    priority: 7
+    is_active: true
+
+  - title: Sber500
+    username: sber500
+    source_type: channel
+    category: accelerator
+    priority: 6
+    is_active: true
+
+  - title: Yandex Go Incubator
+    username: yandexincubator
+    source_type: channel
+    category: accelerator
+    priority: 6
+    is_active: true
+
+  - title: GenerationS
+    username: generations_vc
+    source_type: channel
+    category: accelerator
+    priority: 6
+    is_active: true
+
+  - title: Startup Wise Guys CIS
+    username: startupwiseguys
+    source_type: channel
+    category: accelerator
+    priority: 6
+    is_active: true
+
+  # --- Региональные хабы -------------------------------------------------
+  - title: Silicon Valley Syndicate RU
+    username: svsyndicatru
+    source_type: supergroup
+    category: regional
+    priority: 7
+    is_active: true
+
+  - title: Dubai Tech Founders
+    username: dubaitechfounders
+    source_type: supergroup
+    category: regional
+    priority: 7
+    is_active: true
+
+  - title: Tbilisi Startup Community
+    username: tbilisistartup
+    source_type: supergroup
+    category: regional
+    priority: 7
+    is_active: true
+
+  - title: Yerevan IT Community
+    username: yerevanit
+    source_type: supergroup
+    category: regional
+    priority: 6
+    is_active: true
+
+  - title: Almaty Tech Chat
+    username: almatytech
+    source_type: supergroup
+    category: regional
+    priority: 6
+    is_active: true
+
+  - title: Belgrade Tech Expats
+    username: belgradetech
+    source_type: supergroup
+    category: regional
+    priority: 6
+    is_active: true
+
+  - title: Lisbon Tech Founders
+    username: lisbontechfounders
+    source_type: supergroup
+    category: regional
+    priority: 5
+    is_active: true
+
+  - title: Berlin Startup Crew RU
+    username: berlinstartupru
+    source_type: supergroup
+    category: regional
+    priority: 5
+    is_active: true

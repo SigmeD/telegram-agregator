@@ -1,0 +1,204 @@
+openapi: 3.1.0
+info:
+  title: Telegram Lead Aggregator Admin API
+  version: 0.1.0
+  description: |
+    REST API админ-панели Telegram Lead Aggregator.
+    Источник требований: TZ_Telegram_Lead_Aggregator.md (FEATURE-09).
+    Скелет — детальные схемы будут дополнены по мере реализации фич.
+  contact:
+    name: Maxim Erokhin
+    email: max.eroxin.llm@gmail.com
+
+servers:
+  - url: https://api.dev.tla.example.com
+    description: Dev (Hetzner VPS)
+  - url: https://api.tla.example.com
+    description: Production (Hetzner VPS)
+
+tags:
+  - name: health
+    description: Liveness и readiness пробы
+  - name: leads
+    description: Работа с лидами и воронкой (FEATURE-06, FEATURE-09)
+  - name: sources
+    description: Управление источниками мониторинга (FEATURE-02)
+  - name: triggers
+    description: Управление keyword-триггерами (FEATURE-04)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness probe
+      description: Возвращает 200 если процесс жив. Не требует авторизации.
+      security: []
+      operationId: getHealth
+      responses:
+        '200':
+          description: Сервис отвечает
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /api/v1/leads:
+    get:
+      tags: [leads]
+      summary: Список лидов с фильтрами
+      description: |
+        Возвращает пагинированный список лидов.
+        Фильтры: статус воронки, score, источник, дата, категория.
+      operationId: listLeads
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [new, contacted, in_dialog, qualified, proposal, won, lost] }
+        - name: min_score
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 100 }
+        - name: source_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: since
+          in: query
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 500 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Список лидов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadListResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/sources:
+    get:
+      tags: [sources]
+      summary: Список источников мониторинга
+      operationId: listSources
+      parameters:
+        - name: is_active
+          in: query
+          schema: { type: boolean }
+        - name: category
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Список источников
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Source' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/triggers:
+    get:
+      tags: [triggers]
+      summary: Список keyword-триггеров
+      operationId: listTriggers
+      parameters:
+        - name: trigger_type
+          in: query
+          schema: { type: string, enum: [direct_request, pain_signal, lifecycle_event, negative] }
+        - name: is_active
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Список триггеров
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Trigger' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT выдаётся Admin API после логина (endpoint появится в /api/v1/auth в следующих ревизиях).
+
+  responses:
+    Unauthorized:
+      description: Требуется валидный Bearer JWT
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, version]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        version: { type: string, description: 'Версия образа backend' }
+        checked_at: { type: string, format: date-time }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: 'unauthorized' }
+        message: { type: string }
+        details: { type: object, additionalProperties: true }
+
+    LeadListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Lead' }
+        next_cursor: { type: string, nullable: true }
+
+    Lead:
+      type: object
+      description: Placeholder — полная схема заполняется при реализации FEATURE-06/09.
+      properties:
+        id: { type: string, format: uuid }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        category: { type: string, enum: [hot, warm, cold, irrelevant] }
+        status: { type: string, enum: [new, contacted, in_dialog, qualified, proposal, won, lost] }
+        source_id: { type: string, format: uuid }
+        sender_username: { type: string, nullable: true }
+        message_excerpt: { type: string }
+        analyzed_at: { type: string, format: date-time }
+
+    Source:
+      type: object
+      description: Telegram-источник (см. FEATURE-02).
+      properties:
+        id: { type: string, format: uuid }
+        chat_id: { type: integer, format: int64 }
+        title: { type: string }
+        username: { type: string, nullable: true }
+        source_type: { type: string, enum: [channel, group, supergroup] }
+        category: { type: string, nullable: true }
+        priority: { type: integer, minimum: 1, maximum: 10 }
+        is_active: { type: boolean }
+
+    Trigger:
+      type: object
+      description: Keyword-триггер (см. FEATURE-04).
+      properties:
+        id: { type: string, format: uuid }
+        keyword: { type: string }
+        trigger_type: { type: string, enum: [direct_request, pain_signal, lifecycle_event, negative] }
+        weight: { type: integer }
+        is_active: { type: boolean }
+        language: { type: string, default: ru }
