@@ -126,7 +126,8 @@ make seed            # загрузить seed-данные (источники,
 - [x] Superpowers plugin установлен (`claude-plugins-official`)
 - [ ] GitHub Secrets залиты (после явного разрешения Максима)
 - [x] Environment protection для `production` включён (Required reviewers)
-- [ ] Vercel-проект привязан к репо, dev preview работает
+- [x] Vercel-проект создан и слинкован (`maxeroxinllm-5214s-projects/telegram-agregator`), preview работает
+- [ ] Vercel GitHub Integration (автопревью на PR) — после подтверждения preview-деплоя
 - [ ] Dev VPS предоставлен, SSH-ключи залиты в GitHub Secrets
 - [ ] Telethon session сгенерирована (вручную на VPS)
 - [ ] Миграция `0001_initial.py` применена
