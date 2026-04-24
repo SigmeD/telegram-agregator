@@ -119,21 +119,96 @@ make seed            # загрузить seed-данные (источники,
 
 ## Current state
 
-- [x] ТЗ зафиксировано
-- [x] Git init, структура монорепо, скаффолд-файлы (138 файлов, 8075 строк)
-- [x] CI/CD workflow'ы описаны (требуют secrets в GitHub — залить после явного разрешения)
-- [x] GitHub remote: https://github.com/SigmeD/telegram-agregator (main + develop)
-- [x] Superpowers plugin установлен (`claude-plugins-official`)
-- [ ] GitHub Secrets залиты (после явного разрешения Максима)
-- [x] Environment protection для `production` включён (Required reviewers)
-- [x] Vercel-проект создан и слинкован (`maxeroxinllm-5214s-projects/telegram-agregator`), preview работает
-- [x] Vercel GitHub Integration подключена: push в `develop` → preview автоматом; push в `main` блокируется через `vercel.json git.deploymentEnabled.main=false` (верифицировано пустым результатом после main push)
-- [ ] Dev VPS предоставлен, SSH-ключи залиты в GitHub Secrets
-- [ ] Telethon session сгенерирована (вручную на VPS)
-- [ ] Миграция `0001_initial.py` применена
-- [ ] Sprint 1 начат
+Репозиторий: https://github.com/SigmeD/telegram-agregator · Vercel project: `maxeroxinllm-5214s-projects/telegram-agregator` · Latest working preview: `telegram-agregator-fjog3lpr8-maxeroxinllm-5214s-projects.vercel.app`.
+
+**Сделано:**
+- [x] ТЗ зафиксировано (`TZ_Telegram_Lead_Aggregator.md`)
+- [x] Git init, монорепо (backend/frontend/infra/docs/.github), 138 скаффолд-файлов в initial commit
+- [x] 7 GitHub Actions workflows (CI backend/frontend/docs + security + CD dev/prod + release)
+- [x] SDLC-артефакты: 7 ADR, 4 runbook, DoD, DoR, architecture, security, prompts-versioning, OpenAPI 3.1, retro-шаблон, sprint-00 kickoff
+- [x] BUSINESS_RULES.md — 110 инвариантов из ТЗ (BR-001…BR-110)
+- [x] GitHub remote создан, ветки `main` и `develop` синхронизированы
+- [x] Environment protection для `production` на GitHub (Required reviewers)
+- [x] Vercel: проект создан, слинкован, Git Integration подключена
+- [x] Vercel: push в `develop` → auto preview (build 51s Ready); push в `main` заблокирован через `git.deploymentEnabled.main=false` (верифицировано: 0 deploys за 90s после push)
+- [x] Vercel dashboard-settings синхронизированы через REST API (`rootDirectory=frontend`, `commandForIgnoringBuildStep=null`)
+- [x] pnpm workspace отложен до появления shared-пакетов (ADR-0007); frontend/pnpm-lock.yaml коммичен
+
+**Не сделано (блокеры для Sprint 1):**
+- [ ] GitHub Secrets залиты (после явного разрешения Максима — см. список в `infra/README.md`)
+- [ ] Dev VPS предоставлен (Hetzner/Timeweb): host, user, SSH-ключи в GitHub Secrets (`DEV_VPS_HOST`, `DEV_VPS_USER`, `DEV_SSH_KEY`)
+- [ ] Telethon session сгенерирована вручную на VPS (требует SMS-код, в CI не автоматизируется)
+- [ ] SQLAlchemy-модели написаны (`backend/src/shared/db/models.py` — сейчас stub)
+- [ ] Первая миграция `0001_initial.py` для FEATURE-01..03 (telegram_sources, raw_messages, keyword_triggers)
+- [ ] Sprint 1: реализация FEATURE-01 (Telegram auth), FEATURE-02 (sources CRUD), FEATURE-03 (Telethon listener), FEATURE-04 (keyword filter)
+- [ ] Dependabot PR #12 (Next.js 15→16 major bump) — разобрать: merge либо закрыть (преждевременный мажор)
+
+**Открытые вопросы (требуют решения Максима):**
+- Prod vs dev VPS — один сервер с разными compose-проектами или два?
+- Количество Telegram-аккаунтов в ротации (ТЗ рекомендует 2-3)
+- Timezone для тихих часов (сейчас в `.env.example` = `Asia/Yekaterinburg`, проверить)
+- Таймер ручной валидации (ТЗ — еженедельно 20 случайных LLM-решений): где будет UI?
 
 Обновлять этот блок после каждого шага.
+
+## Setup на свежей машине
+
+Если работа продолжается на другом компьютере, выполнить по порядку:
+
+### 1. Системные пакеты
+```bash
+# Linux/macOS
+curl -fsSL https://get.pnpm.io/install.sh | sh -   # pnpm
+curl -LsSf https://astral.sh/uv/install.sh | sh    # uv (Python)
+# Windows (winget)
+winget install OpenJS.NodeJS.LTS
+winget install pnpm.pnpm
+winget install astral-sh.uv
+winget install GitHub.cli    # опционально, для gh repo ops
+```
+Плюс: Docker Desktop (backend локально), Python 3.11+, Git.
+
+### 2. Клон и setup
+```bash
+git clone https://github.com/SigmeD/telegram-agregator.git
+cd telegram-agregator
+cp .env.example .env         # реальные значения — только после разрешения Максима
+pre-commit install            # pip install pre-commit
+cd frontend && pnpm install && cd ..
+```
+
+### 3. Claude Code plugins (если Claude Code установлен)
+```
+/plugin install superpowers@claude-plugins-official
+/plugin install vercel@claude-plugins-official
+/reload-plugins
+```
+Оба плагина добавляют skills — проверить через `/plugin` → Installed.
+
+### 4. Vercel CLI и relink
+```bash
+npm i -g vercel
+vercel login                  # интерактивно, OAuth device flow
+cd frontend
+vercel link --yes --project telegram-agregator
+# Получите .vercel/project.json (gitignored) обратно
+```
+
+### 5. Локальный запуск (когда будут модели и миграции)
+```bash
+make up        # docker compose поднимает pg, redis, 4 backend-сервиса, frontend
+make migrate   # alembic upgrade head
+make seed      # 32 источника + keyword-триггеры
+```
+
+### Памятка про state, который НЕ в git
+
+- `.env` — с реальными ключами (локально, не коммитится)
+- `frontend/.vercel/` — project IDs от `vercel link` (per-machine, пересоздаётся)
+- Backend Telethon session-файл — только на VPS
+- GitHub Secrets — настраиваются раз, остаются на GitHub
+
+Memory-правила Claude Code (`.env permission`, `prod deploy permission` и т.д.) живут в локальной памяти конкретной Claude Code-инсталляции, на новой машине их надо либо заново проговорить Claude, либо полагаться на правила из этого файла и `CONTRIBUTING.md`/`SECURITY.md` (они дублированы).
 
 ## Ссылки внутрь
 

@@ -37,11 +37,15 @@
 - **2026-04-24** Vercel Git Integration подключена (`vercel git connect`). Push в `develop` → автоматический preview-деплой (подтверждено build `fjog3lpr8`, 51s Ready). Push в `main` заблокирован через `vercel.json git.deploymentEnabled.main=false` — верифицировано: после push в main за 90с НЕ создано ни одного нового deployment record. Production alias `telegram-agregator-maxeroxinllm-5214s-projects.vercel.app` возвращает HTTP 404 (никогда не был успешно задеплоен).
 - **2026-04-24** Vercel CLI plugin для Claude Code установлен — добавляет ~30 vercel:* skills для управления через Skill tool.
 
-### Pending
-- Заливка GitHub Secrets (после явного разрешения Максима). Список — в `infra/README.md` и `.env.example`.
-- Привязка Vercel к GitHub repo (vercel git connect) после первого успешного preview.
-- Выделение dev VPS, генерация Telethon session вручную на VPS.
-- Первая миграция БД (FEATURE-02, FEATURE-03 схемы) — Sprint 1.
+### Pending (блокеры Sprint 1)
+- Заливка GitHub Secrets — после явного разрешения Максима (список: `infra/README.md`, `.env.example`).
+- Dev VPS предоставлен, SSH-ключи в GitHub Secrets.
+- Telethon session сгенерирована вручную на VPS.
+- SQLAlchemy-модели (`backend/src/shared/db/models.py`) и первая миграция `0001_initial.py`.
+- Dependabot PR #12 (Next.js 15→16 major) — merge или close.
+
+### Documentation
+- **2026-04-24** `CLAUDE.md` расширен: секция «Setup на свежей машине» (инструкция onboarding после смены железа), детализирован блок Current state с явным разделением сделано/не сделано и открытыми вопросами.
 
 ---
 
