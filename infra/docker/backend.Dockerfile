@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: builder — resolves dependencies with `uv` and produces a venv.
 # -----------------------------------------------------------------------------
-FROM python:3.11-slim-bookworm AS builder
+FROM python:3.14-slim-bookworm AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -52,7 +52,7 @@ RUN uv sync --no-editable || uv pip install --python /opt/venv/bin/python .
 # -----------------------------------------------------------------------------
 # Stage 2: runtime — slim, non-root, only what we need to run.
 # -----------------------------------------------------------------------------
-FROM python:3.11-slim-bookworm AS runtime
+FROM python:3.14-slim-bookworm AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
