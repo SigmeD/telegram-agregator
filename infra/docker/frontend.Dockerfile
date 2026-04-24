@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: deps — install production + dev deps with pnpm.
 # -----------------------------------------------------------------------------
-FROM node:20-bookworm-slim AS deps
+FROM node:25-bookworm-slim AS deps
 
 ENV PNPM_HOME=/pnpm \
     PATH="/pnpm:$PATH" \
@@ -27,7 +27,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # -----------------------------------------------------------------------------
 # Stage 2: build — produce `.next/standalone` bundle.
 # -----------------------------------------------------------------------------
-FROM node:20-bookworm-slim AS builder
+FROM node:25-bookworm-slim AS builder
 
 ENV PNPM_HOME=/pnpm \
     PATH="/pnpm:$PATH" \
@@ -50,7 +50,7 @@ RUN pnpm build
 # -----------------------------------------------------------------------------
 # Stage 3: runtime — minimal distroless-ish image.
 # -----------------------------------------------------------------------------
-FROM node:20-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
