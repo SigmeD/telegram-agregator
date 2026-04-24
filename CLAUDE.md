@@ -133,15 +133,17 @@ make seed            # загрузить seed-данные (источники,
 - [x] Vercel: push в `develop` → auto preview (build 51s Ready); push в `main` заблокирован через `git.deploymentEnabled.main=false` (верифицировано: 0 deploys за 90s после push)
 - [x] Vercel dashboard-settings синхронизированы через REST API (`rootDirectory=frontend`, `commandForIgnoringBuildStep=null`)
 - [x] pnpm workspace отложен до появления shared-пакетов (ADR-0007); frontend/pnpm-lock.yaml коммичен
+- [x] **DB-фундамент:** 5 SQLAlchemy моделей в `backend/src/shared/db/tables/`, миграция `0001_initial`, 35 интеграционных тестов против Postgres 15 (testcontainers), ADR-0008 "Database conventions" (TIMESTAMPTZ, CHECK vs ENUM, FK RESTRICT, UUID `gen_random_uuid()`)
+- [x] `migrations/env.py` декуплен от полной `Settings` — читает `DATABASE_URL` из `os.environ`, не требует Telegram/LLM-secrets для запуска миграций
 
 **Не сделано (блокеры для Sprint 1):**
 - [ ] GitHub Secrets залиты (после явного разрешения Максима — см. список в `infra/README.md`)
 - [ ] Dev VPS предоставлен (Hetzner/Timeweb): host, user, SSH-ключи в GitHub Secrets (`DEV_VPS_HOST`, `DEV_VPS_USER`, `DEV_SSH_KEY`)
 - [ ] Telethon session сгенерирована вручную на VPS (требует SMS-код, в CI не автоматизируется)
-- [ ] SQLAlchemy-модели написаны (`backend/src/shared/db/models.py` — сейчас stub)
-- [ ] Первая миграция `0001_initial.py` для FEATURE-01..03 (telegram_sources, raw_messages, keyword_triggers)
+- [ ] Seed-скрипт: 30+ источников + начальный словарь keyword-триггеров (`make seed` → `backend/src/shared/db/seed.py` + YAML в `backend/seeds/`)
 - [ ] Sprint 1: реализация FEATURE-01 (Telegram auth), FEATURE-02 (sources CRUD), FEATURE-03 (Telethon listener), FEATURE-04 (keyword filter)
 - [ ] Dependabot PR #12 (Next.js 15→16 major bump) — разобрать: merge либо закрыть (преждевременный мажор)
+- [ ] Follow-up: `tests/unit/test_smoke.py::test_module_imports[worker.*]` падает на pre-existing проблеме — `worker/celery_app.py:45` вызывает `create_app()` на module-level, который зовёт `get_settings()` без env vars. Фикс: либо lazy-init Celery-app, либо `tests/conftest.py` с дефолтными env vars. Не в scope DB-foundation.
 
 **Открытые вопросы (требуют решения Максима):**
 - Prod vs dev VPS — один сервер с разными compose-проектами или два?

@@ -36,6 +36,12 @@
 - **2026-04-24** Первый успешный Vercel preview-деплой: https://telegram-agregator-ezxlixyl4-maxeroxinllm-5214s-projects.vercel.app (target=preview, Ready, 47s build). Требует авторизации через Vercel SSO (Deployment Protection включён — это ОК для внутренней dev-площадки).
 - **2026-04-24** Vercel Git Integration подключена (`vercel git connect`). Push в `develop` → автоматический preview-деплой (подтверждено build `fjog3lpr8`, 51s Ready). Push в `main` заблокирован через `vercel.json git.deploymentEnabled.main=false` — верифицировано: после push в main за 90с НЕ создано ни одного нового deployment record. Production alias `telegram-agregator-maxeroxinllm-5214s-projects.vercel.app` возвращает HTTP 404 (никогда не был успешно задеплоен).
 - **2026-04-24** Vercel CLI plugin для Claude Code установлен — добавляет ~30 vercel:* skills для управления через Skill tool.
+- **2026-04-24** DB-фундамент: 5 SQLAlchemy моделей (`TelegramSource`, `RawMessage`, `KeywordTrigger`, `LeadAnalysis`, `SenderProfile`) в `backend/src/shared/db/tables/`. Миграция `0001_initial` со всеми CHECK-констрейнтами, FK `ON DELETE RESTRICT`, двумя partial-индексами (WHERE `is_active=true` / `is_lead=true`), UNIQUE'ами. 35 интеграционных тестов против реального Postgres 15 (testcontainers): CHECK-валидация (source_type, priority, processing_status, confidence), FK RESTRICT, UNIQUE'ы, JSONB round-trip, TIMESTAMPTZ preserves-instant, upgrade→downgrade round-trip, partial-index WHERE-clause sanity.
+- **2026-04-24** ADR-0008 "Database conventions" — TIMESTAMPTZ, UUID `gen_random_uuid()`, VARCHAR+CHECK вместо ENUM, FK RESTRICT, Alembic naming convention на `Base.metadata`.
+
+### Changed (DB foundation)
+- `migrations/env.py` декуплен от `shared.config.Settings` — читает `DATABASE_URL` из `sqlalchemy.url` или `os.environ` напрямую. Alembic больше не требует всех Telegram/LLM/notification secrets для применения миграций (критично для интеграционных тестов и one-off schema dumps).
+- `shared.db.session.Base` получает кастомный `MetaData(naming_convention=…)` — имена PK/FK/CHECK/UQ/IX становятся детерминированными, autogenerate перестаёт генерить фантомные diff'ы.
 
 ### Pending (блокеры Sprint 1)
 - Заливка GitHub Secrets — после явного разрешения Максима (список: `infra/README.md`, `.env.example`).
