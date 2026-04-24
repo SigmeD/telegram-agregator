@@ -126,6 +126,13 @@ namespace_packages = true
 module = ["telethon.*", "celery.*", "testcontainers.*"]
 ignore_missing_imports = true
 
+# Celery's ``@app.task`` decorator is untyped in celery-stubs; blanket
+# disabling ``disallow_untyped_decorators`` for task modules keeps strict
+# mode everywhere else while accepting this single unavoidable un-typed call.
+[[tool.mypy.overrides]]
+module = ["worker.tasks.*"]
+disallow_untyped_decorators = false
+
 # ---------------------------------------------------------------------------
 # Pytest
 # ---------------------------------------------------------------------------

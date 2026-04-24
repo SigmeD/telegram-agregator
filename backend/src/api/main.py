@@ -39,7 +39,9 @@ def main() -> None:
 
     import uvicorn
 
-    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=False)
+    # Bind to all interfaces — the API runs inside a Docker container on the
+    # VPS; upstream nginx (infra/nginx/api.conf) is the only traffic source.
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=False)  # nosec B104
 
 
 if __name__ == "__main__":
