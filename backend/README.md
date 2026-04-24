@@ -58,7 +58,7 @@ uv run alembic -c migrations/alembic.ini revision --autogenerate -m "..."
 ```bash
 uv run pytest
 uv run ruff check src tests
-uv run black src tests
+uv run ruff format src tests
 uv run mypy src
 ```
 

@@ -47,11 +47,16 @@
 - Заливка GitHub Secrets — после явного разрешения Максима (список: `infra/README.md`, `.env.example`).
 - Dev VPS предоставлен, SSH-ключи в GitHub Secrets.
 - Telethon session сгенерирована вручную на VPS.
-- SQLAlchemy-модели (`backend/src/shared/db/models.py`) и первая миграция `0001_initial.py`.
-- Dependabot PR #12 (Next.js 15→16 major) — merge или close.
 
 ### Documentation
 - **2026-04-24** `CLAUDE.md` расширен: секция «Setup на свежей машине» (инструкция onboarding после смены железа), детализирован блок Current state с явным разделением сделано/не сделано и открытыми вопросами.
+
+### CI / deps (sweep 2026-04-24)
+- **PR #19** `chore(ci)`: all CI jobs made green on develop — markdownlint config, trivy-action `v0.36.0`, bandit pyproject `[tool.bandit]` targets, pytest-xdist для `-n auto`, `test_smoke` placeholder для ветки без integration-маркеров.
+- **PR #20** `chore(deps)`: GitHub Actions bumps — `actions/setup-python@v5→v6`, `actions/upload-artifact@v4→v7` (в ci-backend), `github/codeql-action/upload-sarif@v3→v4`, `softprops/action-gh-release@v2→v3`. `.github/dependabot.yml` получил `target-branch: develop` во всех 4 секциях — впредь dependabot-PR пойдут сразу в develop, а не в main.
+- **PR #21** `chore(deps)`: расширение пин-диапазонов (redis <6→<8, openai <2→<3, cryptography <43→<47, pytest-cov <6→<8). **Drop black полностью** — один форматтер (`ruff format`, Black-compatible) вместо двух. Black удалён из dev-deps, `[tool.black]`, pre-commit, alembic post-write hooks, CI workflow job переименован в `lint (ruff + mypy)`. Причина — black и ruff format расходились на multi-line strings и уже ломали CI.
+- **PR #22** `chore(deps)` + `ci(frontend)`: frontend major-bumps — jose 5→6 (API jwtVerify/JWTPayload unchanged), lucide-react 0.454→1.11 (first stable, пока не используется), @hookform/resolvers 3→5 (пока не используется). Попутно починено скаффолд-наследство: vitest был на classic JSX transform (тесты падали `React is not defined`) — добавлен `esbuild.jsx: 'automatic'`; в `.eslintrc.cjs` висел extends `'prettier'` без `eslint-config-prettier` + TS-rules без плагина — вычищено; `actions/upload-artifact@v7` нужно явно `include-hidden-files: true` для `.next/`.
+- **Dependabot cleanup:** из 17 PR-ов, открытых не туда (против main вместо develop), закрыто 14. Применены через ручные chore-ветки те, что решили тащить. Отклонены с обоснованием: #8 (Python 3.11→3.14 major), #11 (Node 20→25 non-LTS), #12 (Next 15→16 преждевременно). Отложен #14 (vitest 2→4 + jsdom 25→29 — major test-infra, требует отдельной прогонки через миграционные codemod'ы vitest v4).
 
 ---
 

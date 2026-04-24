@@ -90,7 +90,7 @@ make down            # остановить
 make logs svc=api    # логи сервиса
 make migrate         # alembic upgrade head
 make test            # backend + frontend тесты
-make lint            # ruff+black+mypy, eslint+prettier+tsc
+make lint            # ruff check + ruff format --check + mypy, eslint+prettier+tsc
 make fmt             # авто-формат
 make seed            # загрузить seed-данные (источники, триггеры)
 ```
@@ -135,6 +135,7 @@ make seed            # загрузить seed-данные (источники,
 - [x] pnpm workspace отложен до появления shared-пакетов (ADR-0007); frontend/pnpm-lock.yaml коммичен
 - [x] **DB-фундамент:** 5 SQLAlchemy моделей в `backend/src/shared/db/tables/`, миграция `0001_initial`, 35 интеграционных тестов против Postgres 15 (testcontainers), ADR-0008 "Database conventions" (TIMESTAMPTZ, CHECK vs ENUM, FK RESTRICT, UUID `gen_random_uuid()`)
 - [x] `migrations/env.py` декуплен от полной `Settings` — читает `DATABASE_URL` из `os.environ`, не требует Telegram/LLM-secrets для запуска миграций
+- [x] **Dependabot sweep (17 PR разобраны):** 3 bundled-PR влиты в develop — GHA bumps + `dependabot.yml target-branch: develop` (#20), pip range widenings + **drop black** (переход только на ruff format, устраняет двойное форматирование) (#21), frontend major bumps (jose 5→6, lucide-react 0→1, @hookform/resolvers 3→5) + фикс скаффолд-CI (vitest JSX automatic, eslint dangling extends, upload-artifact@v7 `include-hidden-files`) (#22). Отклонены с обоснованием: Python 3.14, Node 25 non-LTS, Next 16 major. Отложен: testing group (vitest 2→4 + jsdom 25→29 — отдельная задача).
 
 **Не сделано (блокеры для Sprint 1):**
 - [ ] GitHub Secrets залиты (после явного разрешения Максима — см. список в `infra/README.md`)
@@ -142,8 +143,8 @@ make seed            # загрузить seed-данные (источники,
 - [ ] Telethon session сгенерирована вручную на VPS (требует SMS-код, в CI не автоматизируется)
 - [ ] Seed-скрипт: 30+ источников + начальный словарь keyword-триггеров (`make seed` → `backend/src/shared/db/seed.py` + YAML в `backend/seeds/`)
 - [ ] Sprint 1: реализация FEATURE-01 (Telegram auth), FEATURE-02 (sources CRUD), FEATURE-03 (Telethon listener), FEATURE-04 (keyword filter)
-- [ ] Dependabot PR #12 (Next.js 15→16 major bump) — разобрать: merge либо закрыть (преждевременный мажор)
-- [ ] Follow-up: `tests/unit/test_smoke.py::test_module_imports[worker.*]` падает на pre-existing проблеме — `worker/celery_app.py:45` вызывает `create_app()` на module-level, который зовёт `get_settings()` без env vars. Фикс: либо lazy-init Celery-app, либо `tests/conftest.py` с дефолтными env vars. Не в scope DB-foundation.
+- [ ] Follow-up: `tests/unit/test_smoke.py::test_module_imports[worker.*]` падает на pre-existing проблеме — `worker/celery_app.py:45` вызывает `create_app()` на module-level, который зовёт `get_settings()` без env vars. Фикс: либо lazy-init Celery-app, либо `tests/conftest.py` с дефолтными env vars.
+- [ ] Follow-up: testing group bump (vitest 2→4 + jsdom 25→29) — отдельный PR после миграционного codemod'а vitest v4.
 
 **Открытые вопросы (требуют решения Максима):**
 - Prod vs dev VPS — один сервер с разными compose-проектами или два?
