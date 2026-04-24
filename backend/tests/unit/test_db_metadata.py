@@ -21,3 +21,26 @@ def test_base_metadata_has_project_naming_convention() -> None:
     assert nc["ck"] == "ck_%(table_name)s_%(constraint_name)s"
     assert nc["fk"] == "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s"
     assert nc["pk"] == "pk_%(table_name)s"
+
+
+EXPECTED_TABLES: frozenset[str] = frozenset(
+    {
+        "telegram_sources",
+        "raw_messages",
+        "keyword_triggers",
+        "lead_analysis",
+        "sender_profiles",
+    }
+)
+
+
+def test_base_metadata_registers_all_domain_tables() -> None:
+    """All 5 domain tables are importable and registered on Base.metadata.
+
+    Regression guard: if someone moves a model out of the ``tables/``
+    package, Alembic autogenerate silently stops seeing it.
+    """
+
+    import shared.db.models  # noqa: F401  — side-effect import registers mappers
+
+    assert EXPECTED_TABLES.issubset(Base.metadata.tables.keys())

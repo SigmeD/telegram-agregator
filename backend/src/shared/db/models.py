@@ -1,13 +1,14 @@
-"""ORM models for the aggregator.
+"""Aggregated re-exports of all ORM models.
 
-Models will be added in subsequent commits per FEATURE-02 / FEATURE-03 /
-FEATURE-05 / FEATURE-07 specs (tables ``telegram_sources``, ``raw_messages``,
-``keyword_triggers``, ``lead_analysis``, ``sender_profiles``). For now we only
-re-export :class:`Base` so Alembic autogenerate can discover metadata.
+Alembic's ``env.py`` imports this module so autogenerate can see every
+mapper registered on :class:`shared.db.session.Base`. Individual models
+live under :mod:`shared.db.tables`; add new ones there and extend
+``tables.__all__`` to expose them.
 """
 
 from __future__ import annotations
 
 from shared.db.session import Base
+from shared.db.tables import *  # noqa: F401,F403  — side-effect import for mappers
 
 __all__ = ["Base"]
