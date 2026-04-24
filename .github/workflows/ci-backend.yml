@@ -44,7 +44,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "backend/pyproject.toml"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -75,13 +75,13 @@ jobs:
           version: "0.5.x"
           enable-cache: true
           cache-dependency-glob: "backend/pyproject.toml"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --extra dev
       - name: Run unit tests
         run: uv run pytest -m unit -n auto --cov=src --cov-report=xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-unit-${{ matrix.python-version }}
@@ -130,7 +130,7 @@ jobs:
           version: "0.5.x"
           enable-cache: true
           cache-dependency-glob: "backend/pyproject.toml"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --extra dev
@@ -144,7 +144,7 @@ jobs:
         # non-zero code is a real failure and still bubbles up.
         run: uv run pytest -m integration --cov=src --cov-report=xml || [ $? -eq 5 ]
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-integration-${{ matrix.python-version }}
