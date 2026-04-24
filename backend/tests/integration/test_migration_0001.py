@@ -26,8 +26,7 @@ async def test_migration_creates_all_expected_tables(db_engine: AsyncEngine) -> 
     async with db_engine.connect() as conn:
         result = await conn.execute(
             text(
-                "SELECT table_name FROM information_schema.tables "
-                "WHERE table_schema = 'public'"
+                "SELECT table_name FROM information_schema.tables " "WHERE table_schema = 'public'"
             )
         )
         tables = {row[0] for row in result.all()}
@@ -78,9 +77,7 @@ async def _insert_raw_message(
 
 
 @pytest.mark.parametrize("source_type", ["channel", "group", "supergroup"])
-async def test_source_type_accepts_valid_values(
-    db_session: AsyncSession, source_type: str
-) -> None:
+async def test_source_type_accepts_valid_values(db_session: AsyncSession, source_type: str) -> None:
     await _insert_source(db_session, source_type=source_type)
 
 
@@ -96,9 +93,7 @@ async def test_priority_accepts_in_range(db_session: AsyncSession, priority: int
 
 
 @pytest.mark.parametrize("priority", [0, 11, -1, 100])
-async def test_priority_rejects_out_of_range(
-    db_session: AsyncSession, priority: int
-) -> None:
+async def test_priority_rejects_out_of_range(db_session: AsyncSession, priority: int) -> None:
     with pytest.raises(IntegrityError):
         await _insert_source(db_session, priority=priority)
         await db_session.flush()
@@ -108,9 +103,7 @@ async def test_priority_rejects_out_of_range(
     "status",
     ["pending", "filtered_out", "analyzing", "lead", "not_lead", "error"],
 )
-async def test_processing_status_accepts_valid(
-    db_session: AsyncSession, status: str
-) -> None:
+async def test_processing_status_accepts_valid(db_session: AsyncSession, status: str) -> None:
     await _insert_source(db_session)
     await db_session.flush()
     await _insert_raw_message(db_session, processing_status=status)
@@ -206,9 +199,7 @@ async def test_unique_raw_messages_source_and_telegram_id(
 
 
 async def test_unique_sender_profiles_telegram_user_id(db_session: AsyncSession) -> None:
-    await db_session.execute(
-        text("INSERT INTO sender_profiles (telegram_user_id) VALUES (123)")
-    )
+    await db_session.execute(text("INSERT INTO sender_profiles (telegram_user_id) VALUES (123)"))
     await db_session.flush()
     with pytest.raises(IntegrityError):
         await db_session.execute(
