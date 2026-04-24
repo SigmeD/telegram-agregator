@@ -40,7 +40,7 @@ jobs:
           version: "0.5.x"
           enable-cache: true
           cache-dependency-glob: "backend/pyproject.toml"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: uv sync --extra dev
@@ -97,7 +97,7 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: pip install bandit[toml]==1.7.9
