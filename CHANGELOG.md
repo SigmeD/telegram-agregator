@@ -21,12 +21,17 @@
 - Gitleaks настроен в pre-commit и в `security.yml` CI.
 - Session-файл Telethon шифруется AES-256, ключ — только в env на VPS.
 
+### Changed
+- **2026-04-24** GitHub remote подключён: https://github.com/SigmeD/telegram-agregator. Запушены ветки `main` и `develop` (initial commit rebased на auto-сгенерированный remote-commit, наш README сохранён).
+- **2026-04-24** Superpowers plugin установлен через `/plugin install superpowers@claude-plugins-official` — добавляет 14 skills (brainstorming, writing-plans, executing-plans, tdd, verification-before-completion и др.) и 6 subagent'ов для параллельной работы.
+- `.gitattributes` добавлен — LF enforcement для shell-скриптов, критично для Linux VPS.
+
 ### Pending
-- Создание GitHub remote + первый push.
-- Заливка секретов в GitHub Secrets (после явного разрешения).
-- Привязка Vercel-проекта к репо.
-- Выделение dev VPS, генерация Telethon session.
-- Первая миграция БД (FEATURE-02, FEATURE-03 схемы).
+- Заливка GitHub Secrets (после явного разрешения Максима). Список — в `infra/README.md` и `.env.example`.
+- Включить Environment protection для `production` (Settings → Environments → required reviewers).
+- Привязка Vercel-проекта к репо (Root Directory = `frontend`).
+- Выделение dev VPS, генерация Telethon session вручную на VPS.
+- Первая миграция БД (FEATURE-02, FEATURE-03 схемы) — Sprint 1.
 
 ---
 

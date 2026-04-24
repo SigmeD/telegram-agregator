@@ -120,9 +120,12 @@ make seed            # загрузить seed-данные (источники,
 ## Current state
 
 - [x] ТЗ зафиксировано
-- [x] Git init, структура монорепо, скаффолд-файлы
-- [x] CI/CD workflow'ы описаны (требуют secrets в GitHub — залить после создания remote)
-- [ ] GitHub remote создан, первый push сделан
+- [x] Git init, структура монорепо, скаффолд-файлы (138 файлов, 8075 строк)
+- [x] CI/CD workflow'ы описаны (требуют secrets в GitHub — залить после явного разрешения)
+- [x] GitHub remote: https://github.com/SigmeD/telegram-agregator (main + develop)
+- [x] Superpowers plugin установлен (`claude-plugins-official`)
+- [ ] GitHub Secrets залиты (после явного разрешения Максима)
+- [ ] Environment protection для `production` включён (Settings → Environments → required reviewers)
 - [ ] Vercel-проект привязан к репо, dev preview работает
 - [ ] Dev VPS предоставлен, SSH-ключи залиты в GitHub Secrets
 - [ ] Telethon session сгенерирована (вручную на VPS)
