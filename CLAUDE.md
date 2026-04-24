@@ -125,7 +125,7 @@ make seed            # загрузить seed-данные (источники,
 - [x] GitHub remote: https://github.com/SigmeD/telegram-agregator (main + develop)
 - [x] Superpowers plugin установлен (`claude-plugins-official`)
 - [ ] GitHub Secrets залиты (после явного разрешения Максима)
-- [ ] Environment protection для `production` включён (Settings → Environments → required reviewers)
+- [x] Environment protection для `production` включён (Required reviewers)
 - [ ] Vercel-проект привязан к репо, dev preview работает
 - [ ] Dev VPS предоставлен, SSH-ключи залиты в GitHub Secrets
 - [ ] Telethon session сгенерирована (вручную на VPS)
