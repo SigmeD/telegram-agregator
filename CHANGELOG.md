@@ -34,6 +34,8 @@
 
 ### Added
 - **2026-04-24** Первый успешный Vercel preview-деплой: https://telegram-agregator-ezxlixyl4-maxeroxinllm-5214s-projects.vercel.app (target=preview, Ready, 47s build). Требует авторизации через Vercel SSO (Deployment Protection включён — это ОК для внутренней dev-площадки).
+- **2026-04-24** Vercel Git Integration подключена (`vercel git connect`). Push в `develop` → автоматический preview-деплой (подтверждено build `fjog3lpr8`, 51s Ready). Push в `main` заблокирован через `vercel.json git.deploymentEnabled.main=false` — верифицировано: после push в main за 90с НЕ создано ни одного нового deployment record. Production alias `telegram-agregator-maxeroxinllm-5214s-projects.vercel.app` возвращает HTTP 404 (никогда не был успешно задеплоен).
+- **2026-04-24** Vercel CLI plugin для Claude Code установлен — добавляет ~30 vercel:* skills для управления через Skill tool.
 
 ### Pending
 - Заливка GitHub Secrets (после явного разрешения Максима). Список — в `infra/README.md` и `.env.example`.

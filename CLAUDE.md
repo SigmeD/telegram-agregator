@@ -127,7 +127,7 @@ make seed            # загрузить seed-данные (источники,
 - [ ] GitHub Secrets залиты (после явного разрешения Максима)
 - [x] Environment protection для `production` включён (Required reviewers)
 - [x] Vercel-проект создан и слинкован (`maxeroxinllm-5214s-projects/telegram-agregator`), preview работает
-- [ ] Vercel GitHub Integration (автопревью на PR) — после подтверждения preview-деплоя
+- [x] Vercel GitHub Integration подключена: push в `develop` → preview автоматом; push в `main` блокируется через `vercel.json git.deploymentEnabled.main=false` (верифицировано пустым результатом после main push)
 - [ ] Dev VPS предоставлен, SSH-ключи залиты в GitHub Secrets
 - [ ] Telethon session сгенерирована (вручную на VPS)
 - [ ] Миграция `0001_initial.py` применена
