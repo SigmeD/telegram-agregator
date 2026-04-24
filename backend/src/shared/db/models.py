@@ -9,6 +9,6 @@ live under :mod:`shared.db.tables`; add new ones there and extend
 from __future__ import annotations
 
 from shared.db.session import Base
-from shared.db.tables import *  # noqa: F401,F403  — side-effect import for mappers
+from shared.db.tables import *  # noqa: F403  — side-effect import for mappers
 
 __all__ = ["Base"]
