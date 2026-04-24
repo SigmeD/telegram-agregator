@@ -139,7 +139,10 @@ jobs:
         run: uv run alembic -c migrations/alembic.ini upgrade head
 
       - name: Run integration tests
-        run: uv run pytest -m integration --cov=src --cov-report=xml
+        # pytest exits with code 5 when no tests match the marker — that's
+        # OK here (a branch may not have integration tests yet). Any other
+        # non-zero code is a real failure and still bubbles up.
+        run: uv run pytest -m integration --cov=src --cov-report=xml || [ $? -eq 5 ]
 
       - uses: actions/upload-artifact@v4
         if: always()

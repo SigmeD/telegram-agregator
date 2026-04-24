@@ -27,4 +27,5 @@ def configure_logging(*, log_level: str = "INFO", json_output: bool = True) -> N
 def get_logger(name: str | None = None, **initial_values: Any) -> structlog.stdlib.BoundLogger:
     """Return a bound structlog logger with optional initial context."""
 
-    return structlog.get_logger(name).bind(**initial_values)
+    logger: structlog.stdlib.BoundLogger = structlog.get_logger(name).bind(**initial_values)
+    return logger

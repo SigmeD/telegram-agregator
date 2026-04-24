@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -10,14 +11,28 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from shared.config import get_settings
 from shared.db.models import Base
 
 # Alembic Config object provides access to values in alembic.ini.
 config = context.config
 
-# Inject DATABASE_URL from settings so we don't duplicate it in alembic.ini.
-config.set_main_option("sqlalchemy.url", get_settings().DATABASE_URL)
+# DATABASE_URL resolution order:
+#   1. ``sqlalchemy.url`` already set on the Config (e.g. tests calling
+#      ``cfg.set_main_option("sqlalchemy.url", ...)``)
+#   2. ``DATABASE_URL`` environment variable (CLI / prod)
+# We intentionally avoid importing ``shared.config.Settings`` here because
+# Alembic only needs a DB URL, whereas the full Settings schema requires
+# Telegram/LLM/notification secrets that aren't available in every
+# migration context (e.g. integration tests, one-off schema dumps).
+if not config.get_main_option("sqlalchemy.url"):
+    env_url = os.environ.get("DATABASE_URL")
+    if not env_url:
+        raise RuntimeError(
+            "DATABASE_URL must be provided via environment variable or "
+            "alembic Config.set_main_option('sqlalchemy.url', ...) before "
+            "running migrations."
+        )
+    config.set_main_option("sqlalchemy.url", env_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

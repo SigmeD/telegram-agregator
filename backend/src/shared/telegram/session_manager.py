@@ -23,7 +23,7 @@ class SessionManager:
         self._session_name = session_name
         self._client: TelegramClient | None = None
 
-    async def connect(self) -> "TelegramClient":
+    async def connect(self) -> TelegramClient:
         """Connect to Telegram and return an authorised client.
 
         Raises:
