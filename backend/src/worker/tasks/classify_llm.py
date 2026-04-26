@@ -7,7 +7,7 @@ from uuid import UUID
 from worker.celery_app import app
 
 
-@app.task(name="worker.tasks.classify_llm.classify_message", bind=False)
+@app.task(name="worker.tasks.classify_llm.classify_message", bind=False)  # type: ignore[misc]
 def classify_message(raw_message_id: str) -> str:
     """Run Claude (fallback: GPT-4) classification and persist ``lead_analysis``.
 

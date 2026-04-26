@@ -12,7 +12,7 @@ from uuid import UUID
 from worker.celery_app import app
 
 
-@app.task(name="worker.tasks.filter_keywords.filter_message", bind=False)
+@app.task(name="worker.tasks.filter_keywords.filter_message", bind=False)  # type: ignore[misc]
 def filter_message(raw_message_id: str) -> str:
     """Apply keyword triggers to ``raw_messages[id=raw_message_id]``.
 

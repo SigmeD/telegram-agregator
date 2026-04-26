@@ -74,4 +74,4 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return a process-wide cached :class:`Settings` instance."""
 
-    return Settings()  # type: ignore[call-arg]
+    return Settings()

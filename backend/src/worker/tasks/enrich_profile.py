@@ -5,7 +5,7 @@ from __future__ import annotations
 from worker.celery_app import app
 
 
-@app.task(name="worker.tasks.enrich_profile.enrich_sender", bind=False)
+@app.task(name="worker.tasks.enrich_profile.enrich_sender", bind=False)  # type: ignore[misc]
 def enrich_sender(telegram_user_id: int) -> str:
     """Fetch profile, parse bio, extract external links and persist result.
 
