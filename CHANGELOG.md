@@ -44,9 +44,22 @@
 - `shared.db.session.Base` получает кастомный `MetaData(naming_convention=…)` — имена PK/FK/CHECK/UQ/IX становятся детерминированными, autogenerate перестаёт генерить фантомные diff'ы.
 
 ### Pending (блокеры Sprint 1)
-- Заливка GitHub Secrets — после явного разрешения Максима (список: `infra/README.md`, `.env.example`).
-- Dev VPS предоставлен, SSH-ключи в GitHub Secrets.
+- ~~Заливка GitHub Secrets~~ — закрыто 2026-04-26 (см. ниже).
+- ~~Dev VPS предоставлен, SSH-ключи в GitHub Secrets~~ — закрыто 2026-04-26.
 - Telethon session сгенерирована вручную на VPS.
+- `backend/uv.lock` для reproducible builds.
+- Backend Docker image собран + проверен в compose.
+- PR `develop → main` — manual call Максима (5+ коммитов разницы, ожидаются мелкие конфликты).
+
+### CI / infra (session 2026-04-26)
+- **Dev VPS** `user1@87.242.87.8` (Ubuntu 22.04.5 LTS, 2 vCPU / 3.8 GB / 30 GB) предоставлен, личный SSH-ключ Максима авторизован, passwordless sudo. Установлены Docker Engine 29.4.1 + compose plugin v5.1.3 (через docker.com apt-репо). user1 в группе `docker`. Рабочая директория `/home/user1/telegram-aggregator/`.
+- **Deploy SSH-ключ для CI** (`telegram_agregator_deploy_ed25519`, ed25519, без passphrase) сгенерирован локально, pub в `authorized_keys` на VPS. Приватка залита в GitHub Secret `DEV_SSH_KEY` через `gh secret set < keyfile` — UI-paste мангал ключ при первом заливе, `gh` CLI обходит буфер обмена и проблема ушла.
+- **GitHub Secrets** `DEV_VPS_HOST=87.242.87.8`, `DEV_VPS_USER=user1`, `DEV_SSH_KEY=<priv>` залиты. **PR #23** добавил `.github/workflows/smoke-dev-vps.yml` (workflow_dispatch SSH-проба) — workflow_run #24965406706 зелёный за 5 сек: `user1@vm-test`, sudo passwordless, docker 29.4.1, compose v5.1.3, docker-group ACTIVE. Workflow остался как ручной health-check.
+- **PR #24** `fix(ci)`: drone-ssh (под appleboy/ssh-action) запускает remote-script под `/bin/sh -c` (dash на Ubuntu) — `set -Eeuo pipefail` непринят. `set -eu` покрывает потребности smoke-скрипта.
+- **PR #25** `chore(ci)` в develop: `backend/migrations/alembic.ini` `path_separator = os` (alembic ≥1.14 deprecation, 2.0 хард-эррор). `infra/env/backend.env.example` — env-template для compose `env_file:` directive. `.gitignore` re-include для `infra/env/` (Python-virtualenv pattern `env/` маскировал директорию). `.gitleaks.toml` allowlist для `*.env.example` чтобы generic-api-key rule не падал на placeholder JWT_SECRET. `security.yml` `limit-severities-for-sarif: true` — без него action emit'ит SARIF со всеми severities → exit-code 1 на любую находку (был MEDIUM CVE-2026-41305 в postcss 8.4.31, транзитивно через next 15.5.x).
+- **`gh` CLI 2.91.0** установлен на машине Максима (winget GitHub.cli), авторизован под `SigmeD` (token scopes: `gist, read:org, repo, workflow`).
+- **CI scaffold-фиксы на main** в составе PR #23: bandit B104 false-positive на `0.0.0.0` bind в `api/main.py` (контейнер = security boundary; `# nosec B104`); 7 ruff issues (unused noqa S104/ASYNC110, `__all__` сорт, blank line у imports, quoted annotations у TYPE_CHECKING-imports); 5 mypy issues (`# type: ignore[untyped-decorator]` на 3 Celery `@app.task`, drop stale `[call-arg]` в Settings, `[no-any-return]` на structlog `.bind()`); ci-backend.yml `pytest -n auto` → без xdist (нет в deps), `test-integration` job → gated на `hashFiles('backend/tests/integration/test_*.py')`. На develop эти фиксы пришли иначе через #21/#22 — слияние при `develop → main` PR может потребовать ручного резолва.
+- **Compose smoke на dev VPS:** `docker compose up -d postgres redis` через `infra/compose/docker-compose.yml` с одноразовым рандомным POSTGRES_PASSWORD — postgres:16-alpine + redis:7-alpine стали healthy за 12 сек. Стек снят `down -v` после теста.
 
 ### Documentation
 - **2026-04-24** `CLAUDE.md` расширен: секция «Setup на свежей машине» (инструкция onboarding после смены железа), детализирован блок Current state с явным разделением сделано/не сделано и открытыми вопросами.
