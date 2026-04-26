@@ -28,7 +28,7 @@ async def run() -> None:
     try:
         # TODO: replace with `await client.run_until_disconnected()` once the
         # handler is wired up.
-        while True:  # noqa: ASYNC110
+        while True:
             await asyncio.sleep(60)
     finally:
         await session.disconnect()

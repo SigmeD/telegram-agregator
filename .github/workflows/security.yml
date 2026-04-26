@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -83,6 +83,10 @@ jobs:
           exit-code: "1"
           format: sarif
           output: trivy-fs.sarif
+          # Without this, the action builds SARIF with ALL severities and
+          # `exit-code: 1` fires on any finding regardless of `severity`
+          # filter — see aquasecurity/trivy-action#1099.
+          limit-severities-for-sarif: "true"
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:

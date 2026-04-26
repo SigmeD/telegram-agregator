@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="session")
-def postgres_container() -> Iterator["PostgresContainer"]:
+def postgres_container() -> Iterator[PostgresContainer]:
     """Ephemeral Postgres 15 container for integration tests."""
 
     from testcontainers.postgres import PostgresContainer
@@ -28,7 +28,7 @@ def postgres_container() -> Iterator["PostgresContainer"]:
 
 
 @pytest.fixture(scope="session")
-def redis_container() -> Iterator["RedisContainer"]:
+def redis_container() -> Iterator[RedisContainer]:
     """Ephemeral Redis 7 container for integration tests."""
 
     from testcontainers.redis import RedisContainer
