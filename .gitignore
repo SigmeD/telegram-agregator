@@ -82,3 +82,9 @@ sessions/
 # ─── Локальные артефакты ─────────────────────────────────
 tmp/
 .cache/
+
+# ─── Project-specific re-includes ────────────────────────
+# `env/` above (Python virtualenv pattern) catches `infra/env/` whole.
+# Re-include the directory so we can track its example/template files;
+# the *.env / !*.env.example rules above still ignore real backend.env.
+!infra/env/

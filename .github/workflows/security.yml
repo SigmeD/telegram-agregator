@@ -83,6 +83,11 @@ jobs:
           exit-code: "1"
           format: sarif
           output: trivy-fs.sarif
+          # Without this, the action builds SARIF with ALL severities and
+          # `exit-code: 1` fires on any finding regardless of `severity`
+          # filter — see aquasecurity/trivy-action#1099. (Currently the
+          # MEDIUM postcss CVE-2026-41305, transitive via next 15.5.x.)
+          limit-severities-for-sarif: "true"
       - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
