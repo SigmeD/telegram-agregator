@@ -28,7 +28,7 @@ jobs:
           port: ${{ secrets.DEV_SSH_PORT || 22 }}
           script_stop: true
           script: |
-            set -Eeuo pipefail
+            set -eu
             echo "=== identity ==="
             whoami
             hostname
