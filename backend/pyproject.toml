@@ -37,7 +37,7 @@ dependencies = [
     "sentry-sdk>=1.45,<3.0",
     # Auth helpers
     "pyjwt>=2.8,<3.0",
-    "cryptography>=42.0,<43.0",
+    "cryptography>=42.0,<48.0",
 ]
 
 [project.optional-dependencies]
