@@ -5,6 +5,9 @@
 ## [Unreleased]
 
 ### Added
+- **2026-04-27** Seed loader (`shared.db.seed`, `make seed`) + миграция `0002_chat_id_nullable`. Loader идемпотентен: источники upsert'ятся по `lower(username)` (`chat_id` остаётся NULL до резолва listener'ом), триггеры — `INSERT … ON CONFLICT (keyword, language) DO UPDATE`. Engine читает `DATABASE_URL` из `os.environ` напрямую (тот же decoupling-паттерн, что в `migrations/env.py` — без `Settings`/secrets). Стартовый набор в YAML: 32 источника (founders/vc/accel/regional) + 33 триггера (direct_request/pain_signal/lifecycle_event/negative).
+- **2026-04-27** Миграция `0002`: `telegram_sources.chat_id` → `nullable=True`; `UNIQUE` constraint заменён на partial unique index `uq_telegram_sources_chat_id WHERE chat_id IS NOT NULL`. Семантика: «pending source» сидится без chat_id, listener (FEATURE-03) backfill'ит при первом подключении. Downgrade fail-fast: если в БД остались строки с `chat_id IS NULL`, downgrade поднимает RuntimeError вместо падения посередине.
+- **2026-04-27** 14 интеграционных тестов в `test_seed.py` против Postgres 15 (testcontainers): nullable chat_id (multiple NULLs OK, partial unique enforces non-null uniqueness, indexdef содержит WHERE-clause), `seed_sources` (insert/idempotent/update/case-insensitive username/reject-no-username/reject-bad-priority), `seed_triggers` (insert/idempotent/update/distinct-languages/reject-bad-type), real-YAML smoke (≥30 источников, ≥25 триггеров).
 - Исходное ТЗ v1.0 (апр 2026) зафиксировано в репо.
 - Инициализация монорепо: `backend/`, `frontend/`, `infra/`, `docs/`, `.github/`.
 - `CLAUDE.md` — живой бриф для Claude Code.

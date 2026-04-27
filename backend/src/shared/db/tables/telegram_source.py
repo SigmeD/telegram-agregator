@@ -1,7 +1,9 @@
 """ORM model for the ``telegram_sources`` table — monitored chats/channels.
 
 Schema matches TZ FEATURE-02 literally, with explicit ``priority``
-bounds (documented in ADR-0008).
+bounds (documented in ADR-0008). ``chat_id`` is nullable: seeded rows
+arrive with only ``username``, and the listener back-fills ``chat_id``
+on first connect (migration 0002).
 """
 
 from __future__ import annotations
@@ -14,9 +16,11 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    Index,
     Integer,
     String,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -37,6 +41,15 @@ class TelegramSource(Base):
             "priority BETWEEN 1 AND 10",
             name="priority_in_range",
         ),
+        # Partial unique index: enforces UNIQUE on chat_id only for
+        # back-filled (non-NULL) rows. Postgres doesn't support partial
+        # UNIQUE *constraints*, only partial unique *indexes*.
+        Index(
+            "uq_telegram_sources_chat_id",
+            "chat_id",
+            unique=True,
+            postgresql_where=text("chat_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -44,7 +57,7 @@ class TelegramSource(Base):
         primary_key=True,
         server_default=func.gen_random_uuid(),
     )
-    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True)
+    chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     username: Mapped[str | None] = mapped_column(String(100), nullable=True)
     source_type: Mapped[str] = mapped_column(String(50), nullable=False)
