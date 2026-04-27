@@ -26,8 +26,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 async def test_chat_id_now_nullable(db_session: AsyncSession) -> None:
     await db_session.execute(
         text(
-            "INSERT INTO telegram_sources (title, source_type) "
-            "VALUES ('pending source', 'channel')"
+            "INSERT INTO telegram_sources (title, source_type) VALUES ('pending source', 'channel')"
         )
     )
     await db_session.flush()
@@ -84,10 +83,7 @@ async def test_partial_unique_index_has_where_clause(
 ) -> None:
     row = (
         await db_session.execute(
-            text(
-                "SELECT indexdef FROM pg_indexes "
-                "WHERE indexname = 'uq_telegram_sources_chat_id'"
-            )
+            text("SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_telegram_sources_chat_id'")
         )
     ).one()
     assert "WHERE" in row[0].upper()
@@ -124,10 +120,7 @@ async def test_seed_sources_inserts_all_on_empty_db(db_session: AsyncSession) ->
     assert counts == {"inserted": 2, "updated": 0}
     rows = (
         await db_session.execute(
-            text(
-                "SELECT username, priority, chat_id FROM telegram_sources "
-                "ORDER BY username"
-            )
+            text("SELECT username, priority, chat_id FROM telegram_sources ORDER BY username")
         )
     ).all()
     assert [(r[0], r[1], r[2]) for r in rows] == [
@@ -144,9 +137,7 @@ async def test_seed_sources_idempotent(db_session: AsyncSession) -> None:
 
     assert first == {"inserted": 2, "updated": 0}
     assert second == {"inserted": 0, "updated": 2}
-    total = (
-        await db_session.execute(text("SELECT count(*) FROM telegram_sources"))
-    ).scalar_one()
+    total = (await db_session.execute(text("SELECT count(*) FROM telegram_sources"))).scalar_one()
     assert total == 2
 
 
@@ -161,10 +152,7 @@ async def test_seed_sources_updates_existing_fields(db_session: AsyncSession) ->
 
     row = (
         await db_session.execute(
-            text(
-                "SELECT title, priority FROM telegram_sources "
-                "WHERE username = 'testfounders'"
-            )
+            text("SELECT title, priority FROM telegram_sources WHERE username = 'testfounders'")
         )
     ).one()
     assert row == ("Renamed", 3)
@@ -181,9 +169,7 @@ async def test_seed_sources_username_match_is_case_insensitive(
     await db_session.flush()
 
     assert counts == {"inserted": 0, "updated": 1}
-    total = (
-        await db_session.execute(text("SELECT count(*) FROM telegram_sources"))
-    ).scalar_one()
+    total = (await db_session.execute(text("SELECT count(*) FROM telegram_sources"))).scalar_one()
     assert total == 2
 
 
@@ -228,9 +214,7 @@ async def test_seed_triggers_inserts_all_on_empty_db(db_session: AsyncSession) -
     await db_session.flush()
 
     assert counts == {"inserted": 2, "updated": 0}
-    total = (
-        await db_session.execute(text("SELECT count(*) FROM keyword_triggers"))
-    ).scalar_one()
+    total = (await db_session.execute(text("SELECT count(*) FROM keyword_triggers"))).scalar_one()
     assert total == 2
 
 
@@ -248,9 +232,7 @@ async def test_seed_triggers_updates_weight_and_type(db_session: AsyncSession) -
     await seed_triggers(db_session, _TRIGGER_FIXTURE)
     await db_session.flush()
 
-    bumped = [
-        {**_TRIGGER_FIXTURE[0], "weight": 7, "trigger_type": "pain_signal"}
-    ]
+    bumped = [{**_TRIGGER_FIXTURE[0], "weight": 7, "trigger_type": "pain_signal"}]
     counts = await seed_triggers(db_session, bumped)
     await db_session.flush()
     assert counts == {"inserted": 0, "updated": 1}
@@ -298,9 +280,7 @@ async def test_real_yaml_sources_load_and_apply(db_session: AsyncSession) -> Non
     await db_session.flush()
     assert counts["inserted"] == len(rows)
 
-    total = (
-        await db_session.execute(text("SELECT count(*) FROM telegram_sources"))
-    ).scalar_one()
+    total = (await db_session.execute(text("SELECT count(*) FROM telegram_sources"))).scalar_one()
     assert total == len(rows)
 
 

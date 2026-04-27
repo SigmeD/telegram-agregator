@@ -66,9 +66,7 @@ def _validate_row(row: dict[str, Any], required: tuple[str, ...], where: str) ->
         raise ValueError(f"{where}: row missing required fields {missing}: {row!r}")
 
 
-async def seed_sources(
-    session: AsyncSession, rows: Iterable[dict[str, Any]]
-) -> dict[str, int]:
+async def seed_sources(session: AsyncSession, rows: Iterable[dict[str, Any]]) -> dict[str, int]:
     """Upsert rows into ``telegram_sources``, matched by ``lower(username)``.
 
     ``chat_id`` is left NULL on insert; the listener back-fills it. Rows
@@ -91,10 +89,7 @@ async def seed_sources(
         }
 
         existing = await session.execute(
-            text(
-                "SELECT id FROM telegram_sources "
-                "WHERE lower(username) = lower(:username)"
-            ),
+            text("SELECT id FROM telegram_sources WHERE lower(username) = lower(:username)"),
             {"username": params["username"]},
         )
         existing_id = existing.scalar_one_or_none()
@@ -126,9 +121,7 @@ async def seed_sources(
     return {"inserted": inserted, "updated": updated}
 
 
-async def seed_triggers(
-    session: AsyncSession, rows: Iterable[dict[str, Any]]
-) -> dict[str, int]:
+async def seed_triggers(session: AsyncSession, rows: Iterable[dict[str, Any]]) -> dict[str, int]:
     """Upsert rows into ``keyword_triggers`` via ON CONFLICT (keyword, language).
 
     ``xmax = 0`` distinguishes insert from update in PostgreSQL: a row
@@ -182,9 +175,7 @@ async def seed_all(session: AsyncSession) -> dict[str, dict[str, int]]:
 def _database_url_from_env() -> str:
     url = os.environ.get("DATABASE_URL")
     if not url:
-        raise RuntimeError(
-            "DATABASE_URL must be set in the environment to run seed."
-        )
+        raise RuntimeError("DATABASE_URL must be set in the environment to run seed.")
     return url
 
 
@@ -199,8 +190,7 @@ async def _cli() -> int:
         await engine.dispose()
 
     print(
-        f"sources: inserted={counts['sources']['inserted']} "
-        f"updated={counts['sources']['updated']}"
+        f"sources: inserted={counts['sources']['inserted']} updated={counts['sources']['updated']}"
     )
     print(
         f"triggers: inserted={counts['triggers']['inserted']} "
