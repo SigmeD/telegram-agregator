@@ -1,0 +1,48 @@
+name: smoke-dev-vps
+
+# One-shot manual sanity check for DEV_VPS_HOST / DEV_VPS_USER / DEV_SSH_KEY
+# secrets. SSH into the dev VPS, print whoami / hostname / docker version, and
+# exit. No state changes on the VPS.
+#
+# Run: Actions → smoke-dev-vps → "Run workflow" → Run.
+# Once the secrets are confirmed working, this workflow can stay as a
+# health-check or be deleted.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: ssh handshake + sanity probes
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH probe
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_VPS_HOST }}
+          username: ${{ secrets.DEV_VPS_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: ${{ secrets.DEV_SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -eu
+            echo "=== identity ==="
+            whoami
+            hostname
+            echo
+            echo "=== sudo (passwordless?) ==="
+            sudo -n true && echo "sudo: passwordless OK" || echo "sudo: NEEDS PASSWORD"
+            echo
+            echo "=== docker ==="
+            docker --version
+            docker compose version
+            id -nG | tr ' ' '\n' | grep -E '^docker$' && echo "docker group: ACTIVE" || echo "docker group: MISSING"
+            echo
+            echo "=== disk / memory ==="
+            df -h / | tail -1
+            free -h | head -2
+            echo
+            echo "=== smoke OK ==="
