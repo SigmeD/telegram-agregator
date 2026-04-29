@@ -104,6 +104,15 @@ make seed            # загрузить seed-данные (источники,
 3. **После каждого релиза обновлять документацию:** CHANGELOG обязательно; README/runbook/ADR/API spec/prompts — по применимости.
 4. **CLAUDE.md — живой.** Изменилась структура/стек/процесс → поправить этот файл сразу.
 5. **Multiple subagents** для нетривиальных задач — параллелим независимые треки.
+6. **Context7 всегда.** Для любого вопроса/кода по сторонней библиотеке/SDK/CLI/cloud-сервису (даже хорошо известным — React, Telethon, Aiogram, FastAPI, Anthropic SDK, Vercel) — сначала `mcp__claude_ai_Context7__query-docs` или `mcp__plugin_context7_context7__query-docs`, потом ответ. Training data Claude может отставать; context7 даёт актуальную документацию. Не использовать для рефакторинга/бизнес-логики/общих концепций.
+
+## Внешние сервисы (получение секретов)
+
+Перечень секретов и где их брать — см. `.env.example` и список GH Secrets в `cd-backend-{dev,prod}.yml`. Известные подводные камни:
+
+- **my.telegram.org (TELEGRAM_API_ID / TELEGRAM_API_HASH).** Регистрация приложения **требует отключённого VPN**. С активным VPN форма отдаёт `ERROR` без диагностики (наблюдалось 2026-04-29). Платформа в форме = `Other`, описание на латинице, минимум 30 символов.
+- **@BotFather (NOTIFY_BOT_TOKEN).** Сразу после `/newbot` нужно вручную нажать **Start** у созданного бота, иначе он не сможет писать в личку owner'у.
+- **console.anthropic.com (ANTHROPIC_API_KEY).** Ключ показывается **один раз** при создании. Workspace = Default, имя ключа = `tlg-aggregator-{env}`.
 
 ## Бизнес-правила
 
