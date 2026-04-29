@@ -66,7 +66,7 @@ jobs:
           script_stop: true
           script: |
             set -eu  # appleboy/ssh-action runs script via VPS /bin/sh (dash); -Eeuo pipefail is bash-only
-            cd /opt/tlg
+            cd /home/user1/telegram-aggregator
             git fetch --depth 1 origin main
             git checkout -f origin/main
             export POSTGRES_PASSWORD ANTHROPIC_API_KEY OPENAI_API_KEY TELEGRAM_API_ID \
