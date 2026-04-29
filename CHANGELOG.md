@@ -31,6 +31,7 @@
 - `.gitattributes` добавлен — LF enforcement для shell-скриптов, критично для Linux VPS.
 
 ### Fixed
+- **2026-04-29** CD: `cd-backend-dev` deploy на VPS падал с `sh: 12: set: Illegal option -o pipefail`. `appleboy/ssh-action` пробрасывает скрипт через VPS `/bin/sh` (dash на Ubuntu 22.04), а `set -Eeuo pipefail` — bash-only. Раньше не проявлялось, т.к. build стопорил пайплайн раньше deploy. Заменили на `set -eu` (POSIX-совместимо) в `cd-backend-{dev,prod}.yml`. `script_stop: true` у самого action'а уже даёт fail-fast для script-level ошибок, поэтому `pipefail` для деплой-скрипта без пайпов некритичен.
 - **2026-04-29** CI: `cd-backend-dev` / `cd-backend-prod` падали с `invalid tag "ghcr.io/SigmeD/tlg-aggregator:...": repository name must be lowercase`. `${{ github.repository_owner }}` подставляет owner как есть (`SigmeD`), Docker registry spec требует lowercase. Захардкодили `IMAGE_NAME: sigmed/tlg-aggregator`.
 - **2026-04-29** CI: `ci-backend` integration/unit/lint падали на `astral-sh/setup-uv@v3` с `No version found for 0.5.x` — uv давно ушёл на 0.7.x, старые `0.5.x` теги в action-релизах больше не резолвятся. Сняли `version: "0.5.x"` pin (default = latest stable).
 - **2026-04-24** Vercel build fail `pnpm install --frozen-lockfile exit 1` (headless install без lockfile). Причина: workspace lockfile лежал на уровень выше Root Directory `frontend/` и Vercel его не видел. Решение — отложили pnpm workspace до появления shared-пакетов (ADR-0007), lockfile перенесён в `frontend/pnpm-lock.yaml`.
