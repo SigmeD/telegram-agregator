@@ -97,7 +97,7 @@ jobs:
           envs: IMAGE_TAG,SKIP_MIGRATIONS,POSTGRES_PASSWORD,ANTHROPIC_API_KEY,OPENAI_API_KEY,TELEGRAM_API_ID,TELEGRAM_API_HASH,NOTIFY_BOT_TOKEN,JWT_SECRET,TELETHON_SESSION_KEY,SENTRY_DSN
           script_stop: true
           script: |
-            set -Eeuo pipefail
+            set -eu  # appleboy/ssh-action runs script via VPS /bin/sh (dash); -Eeuo pipefail is bash-only
             cd /opt/tlg
             git fetch --depth 1 origin develop
             git checkout -f origin/develop
