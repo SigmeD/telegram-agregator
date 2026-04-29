@@ -108,11 +108,13 @@ jobs:
                    TELEGRAM_API_HASH TELEGRAM_PHONE NOTIFY_BOT_TOKEN NOTIFY_BOT_ADMIN_CHAT_ID \
                    JWT_SECRET TELETHON_SESSION_KEY SENTRY_DSN
             echo "STEP_EXPORT: ok"
+            echo "STEP_DEPLOY_PRE: invoking deploy.sh with bash -x for trace"
             if [ "${SKIP_MIGRATIONS}" = "true" ]; then
-              bash infra/scripts/deploy.sh dev "${IMAGE_TAG}" --skip-migrations
+              bash -x infra/scripts/deploy.sh dev "${IMAGE_TAG}" --skip-migrations 2>&1
             else
-              bash infra/scripts/deploy.sh dev "${IMAGE_TAG}"
+              bash -x infra/scripts/deploy.sh dev "${IMAGE_TAG}" 2>&1
             fi
+            echo "STEP_DEPLOY_POST: ok"
         env:
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           SKIP_MIGRATIONS: ${{ inputs.skip_migrations || 'false' }}
