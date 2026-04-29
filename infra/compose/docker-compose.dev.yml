@@ -6,7 +6,7 @@
 name: tlg-aggregator
 
 x-dev-image: &dev-image
-  image: ghcr.io/erohin-m/tlg-aggregator:${BACKEND_TAG:-develop}
+  image: ${BACKEND_IMAGE:-ghcr.io/sigmed/tlg-aggregator}:${BACKEND_TAG:-develop}
 
 services:
   postgres:

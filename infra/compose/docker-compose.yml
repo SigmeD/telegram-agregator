@@ -12,7 +12,7 @@
 name: tlg-aggregator
 
 x-backend-common: &backend-common
-  image: ${BACKEND_IMAGE:-ghcr.io/erohin-m/tlg-aggregator}:${BACKEND_TAG:-latest}
+  image: ${BACKEND_IMAGE:-ghcr.io/sigmed/tlg-aggregator}:${BACKEND_TAG:-latest}
   env_file:
     - ../env/backend.env
   environment:

@@ -59,7 +59,55 @@ docker compose version >/dev/null 2>&1 || die "docker compose plugin required"
 sudo mkdir -p "${STATE_DIR}" 2>/dev/null || mkdir -p "${STATE_DIR}" || true
 
 export BACKEND_TAG="${IMAGE_TAG}"
-export BACKEND_IMAGE="${BACKEND_IMAGE:-ghcr.io/erohin-m/tlg-aggregator}"
+export BACKEND_IMAGE="${BACKEND_IMAGE:-ghcr.io/sigmed/tlg-aggregator}"
+
+# Defaults for compose-substitution; can be overridden via env (e.g. prod uses POSTGRES_DB=tlg).
+export POSTGRES_USER="${POSTGRES_USER:-tlg}"
+case "$ENV_NAME" in
+    dev)  export POSTGRES_DB="${POSTGRES_DB:-tlg_dev}" ;;
+    prod) export POSTGRES_DB="${POSTGRES_DB:-tlg}" ;;
+esac
+
+# ---- transient backend.env ------------------------------------------------
+# Compose reads `infra/env/backend.env` via `env_file:`; we generate it on
+# every deploy from environment variables that arrive over SSH from GH Secrets.
+# The file is gitignored (see .gitignore) and chmod 600.
+write_backend_env() {
+    local env_file="${REPO_ROOT}/infra/env/backend.env"
+    log "writing transient ${env_file}"
+    mkdir -p "$(dirname "${env_file}")"
+    : "${TELEGRAM_API_ID:?TELEGRAM_API_ID required}"
+    : "${TELEGRAM_API_HASH:?TELEGRAM_API_HASH required}"
+    : "${TELEGRAM_PHONE:?TELEGRAM_PHONE required}"
+    : "${TELETHON_SESSION_KEY:?TELETHON_SESSION_KEY required}"
+    : "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY required}"
+    : "${NOTIFY_BOT_TOKEN:?NOTIFY_BOT_TOKEN required}"
+    : "${NOTIFY_BOT_ADMIN_CHAT_ID:?NOTIFY_BOT_ADMIN_CHAT_ID required}"
+    : "${JWT_SECRET:?JWT_SECRET required}"
+    cat > "${env_file}" <<EOF
+POSTGRES_USER=${POSTGRES_USER}
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+POSTGRES_DB=${POSTGRES_DB}
+TELEGRAM_API_ID=${TELEGRAM_API_ID}
+TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
+TELEGRAM_PHONE=${TELEGRAM_PHONE}
+TELETHON_SESSION_KEY=${TELETHON_SESSION_KEY}
+ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+OPENAI_API_KEY=${OPENAI_API_KEY:-}
+PROMPT_VERSION=${PROMPT_VERSION:-v1}
+LLM_DAILY_COST_LIMIT_USD=${LLM_DAILY_COST_LIMIT_USD:-10.0}
+NOTIFY_BOT_TOKEN=${NOTIFY_BOT_TOKEN}
+NOTIFY_BOT_ADMIN_CHAT_ID=${NOTIFY_BOT_ADMIN_CHAT_ID}
+JWT_SECRET=${JWT_SECRET}
+SENTRY_DSN=${SENTRY_DSN:-}
+LOG_LEVEL=${LOG_LEVEL:-INFO}
+REDIS_MAXMEMORY=${REDIS_MAXMEMORY:-512mb}
+API_PORT=${API_PORT:-8000}
+BACKEND_TAG=${BACKEND_TAG}
+EOF
+    chmod 600 "${env_file}"
+}
+write_backend_env
 
 COMPOSE=(docker compose \
     --project-directory "${COMPOSE_DIR}" \

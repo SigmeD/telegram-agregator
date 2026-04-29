@@ -62,7 +62,7 @@ jobs:
           username: ${{ secrets.PROD_VPS_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           port: ${{ secrets.PROD_SSH_PORT || 22 }}
-          envs: IMAGE_TAG,SKIP_MIGRATIONS,POSTGRES_PASSWORD,ANTHROPIC_API_KEY,OPENAI_API_KEY,TELEGRAM_API_ID,TELEGRAM_API_HASH,NOTIFY_BOT_TOKEN,JWT_SECRET,TELETHON_SESSION_KEY,SENTRY_DSN
+          envs: IMAGE_TAG,SKIP_MIGRATIONS,POSTGRES_PASSWORD,ANTHROPIC_API_KEY,OPENAI_API_KEY,TELEGRAM_API_ID,TELEGRAM_API_HASH,TELEGRAM_PHONE,NOTIFY_BOT_TOKEN,NOTIFY_BOT_ADMIN_CHAT_ID,JWT_SECRET,TELETHON_SESSION_KEY,SENTRY_DSN
           script_stop: true
           script: |
             set -eu  # appleboy/ssh-action runs script via VPS /bin/sh (dash); -Eeuo pipefail is bash-only
@@ -70,7 +70,8 @@ jobs:
             git fetch --depth 1 origin main
             git checkout -f origin/main
             export POSTGRES_PASSWORD ANTHROPIC_API_KEY OPENAI_API_KEY TELEGRAM_API_ID \
-                   TELEGRAM_API_HASH NOTIFY_BOT_TOKEN JWT_SECRET TELETHON_SESSION_KEY SENTRY_DSN
+                   TELEGRAM_API_HASH TELEGRAM_PHONE NOTIFY_BOT_TOKEN NOTIFY_BOT_ADMIN_CHAT_ID \
+                   JWT_SECRET TELETHON_SESSION_KEY SENTRY_DSN
             if [ "${SKIP_MIGRATIONS}" = "true" ]; then
               bash infra/scripts/deploy.sh prod "${IMAGE_TAG}" --skip-migrations
             else
@@ -84,7 +85,9 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELEGRAM_PHONE: ${{ secrets.TELEGRAM_PHONE }}
           NOTIFY_BOT_TOKEN: ${{ secrets.NOTIFY_BOT_TOKEN }}
+          NOTIFY_BOT_ADMIN_CHAT_ID: ${{ secrets.NOTIFY_BOT_ADMIN_CHAT_ID }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           TELETHON_SESSION_KEY: ${{ secrets.TELETHON_SESSION_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}

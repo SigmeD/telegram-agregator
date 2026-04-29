@@ -6,7 +6,7 @@
 name: tlg-aggregator
 
 x-prod-image: &prod-image
-  image: ghcr.io/erohin-m/tlg-aggregator:${BACKEND_TAG:?BACKEND_TAG required in prod}
+  image: ${BACKEND_IMAGE:-ghcr.io/sigmed/tlg-aggregator}:${BACKEND_TAG:?BACKEND_TAG required in prod}
 
 x-prod-restart: &prod-restart
   restart: always
