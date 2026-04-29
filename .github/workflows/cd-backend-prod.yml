@@ -24,7 +24,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/tlg-aggregator
+  IMAGE_NAME: sigmed/tlg-aggregator
 
 jobs:
   verify-image:
