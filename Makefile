@@ -70,8 +70,8 @@ test-frontend: ## Frontend vitest
 lint: lint-backend lint-frontend ## Все линтеры
 
 .PHONY: lint-backend
-lint-backend: ## ruff + black --check + mypy
-	cd backend && uv run ruff check src tests && uv run black --check src tests && uv run mypy src
+lint-backend: ## ruff check + ruff format --check + mypy
+	cd backend && uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy src
 
 .PHONY: lint-frontend
 lint-frontend: ## eslint + tsc --noEmit + prettier --check
@@ -79,7 +79,7 @@ lint-frontend: ## eslint + tsc --noEmit + prettier --check
 
 .PHONY: fmt
 fmt: ## Авто-форматирование
-	cd backend && uv run ruff check --fix src tests && uv run black src tests
+	cd backend && uv run ruff check --fix src tests && uv run ruff format src tests
 	cd frontend && pnpm prettier --write "src/**/*.{ts,tsx,json,md}"
 
 # ─── Безопасность ────────────────────────────────────────

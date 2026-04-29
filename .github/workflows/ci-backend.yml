@@ -28,7 +28,7 @@ defaults:
 
 jobs:
   lint:
-    name: lint (ruff + black + mypy)
+    name: lint (ruff + mypy)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -40,11 +40,10 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
-          version: "0.5.x"
           enable-cache: true
           cache-dependency-glob: "backend/pyproject.toml"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -55,8 +54,6 @@ jobs:
         run: uv run ruff check src tests
       - name: Ruff format check
         run: uv run ruff format --check src tests
-      - name: Black
-        run: uv run black --check src tests
       - name: Mypy
         run: uv run mypy src
 
@@ -72,18 +69,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
         with:
-          version: "0.5.x"
           enable-cache: true
           cache-dependency-glob: "backend/pyproject.toml"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --extra dev
       - name: Run unit tests
-        # `-n auto` requires pytest-xdist (not in dev deps yet); add it later
-        # when the suite is large enough to benefit from parallelism.
-        run: uv run pytest -m unit --cov=src --cov-report=xml
-      - uses: actions/upload-artifact@v4
+        run: uv run pytest -m unit -n auto --cov=src --cov-report=xml
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-unit-${{ matrix.python-version }}
@@ -94,11 +88,6 @@ jobs:
     name: tests / integration
     runs-on: ubuntu-latest
     needs: lint
-    # Skip until any integration tests actually exist in the repo. Both
-    # alembic env.py (which validates the full Settings model) and pytest
-    # collection need stub envs + at least one matching test before this job
-    # can succeed; that wiring lands with the FEATURE-02/03/04 PR.
-    if: hashFiles('backend/tests/integration/test_*.py') != ''
     strategy:
       fail-fast: false
       matrix:
@@ -134,10 +123,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
         with:
-          version: "0.5.x"
           enable-cache: true
           cache-dependency-glob: "backend/pyproject.toml"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --extra dev
@@ -146,9 +134,12 @@ jobs:
         run: uv run alembic -c migrations/alembic.ini upgrade head
 
       - name: Run integration tests
-        run: uv run pytest -m integration --cov=src --cov-report=xml
+        # pytest exits with code 5 when no tests match the marker — that's
+        # OK here (a branch may not have integration tests yet). Any other
+        # non-zero code is a real failure and still bubbles up.
+        run: uv run pytest -m integration --cov=src --cov-report=xml || [ $? -eq 5 ]
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-integration-${{ matrix.python-version }}

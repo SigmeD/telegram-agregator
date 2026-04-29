@@ -90,7 +90,7 @@ make down            # остановить
 make logs svc=api    # логи сервиса
 make migrate         # alembic upgrade head
 make test            # backend + frontend тесты
-make lint            # ruff+black+mypy, eslint+prettier+tsc
+make lint            # ruff check + ruff format --check + mypy, eslint+prettier+tsc
 make fmt             # авто-формат
 make seed            # загрузить seed-данные (источники, триггеры)
 ```
@@ -133,15 +133,25 @@ make seed            # загрузить seed-данные (источники,
 - [x] Vercel: push в `develop` → auto preview (build 51s Ready); push в `main` заблокирован через `git.deploymentEnabled.main=false` (верифицировано: 0 deploys за 90s после push)
 - [x] Vercel dashboard-settings синхронизированы через REST API (`rootDirectory=frontend`, `commandForIgnoringBuildStep=null`)
 - [x] pnpm workspace отложен до появления shared-пакетов (ADR-0007); frontend/pnpm-lock.yaml коммичен
+- [x] **DB-фундамент:** 5 SQLAlchemy моделей в `backend/src/shared/db/tables/`, миграция `0001_initial`, 35 интеграционных тестов против Postgres 15 (testcontainers), ADR-0008 "Database conventions" (TIMESTAMPTZ, CHECK vs ENUM, FK RESTRICT, UUID `gen_random_uuid()`)
+- [x] `migrations/env.py` декуплен от полной `Settings` — читает `DATABASE_URL` из `os.environ`, не требует Telegram/LLM-secrets для запуска миграций
+- [x] **Dependabot sweep (17 PR разобраны):** 3 bundled-PR влиты в develop — GHA bumps + `dependabot.yml target-branch: develop` (#20), pip range widenings + **drop black** (переход только на ruff format, устраняет двойное форматирование) (#21), frontend major bumps (jose 5→6, lucide-react 0→1, @hookform/resolvers 3→5) + фикс скаффолд-CI (vitest JSX automatic, eslint dangling extends, upload-artifact@v7 `include-hidden-files`) (#22). Отклонены с обоснованием: Python 3.14, Node 25 non-LTS, Next 16 major. Отложен: testing group (vitest 2→4 + jsdom 25→29 — отдельная задача).
+- [x] **Dev VPS (`user1@87.242.87.8`, Ubuntu 22.04.5 LTS, 2 vCPU / 3.8 GB RAM / 30 GB):** SSH-ключ Максима авторизован; passwordless sudo; Docker Engine 29.4.1 + compose plugin v5.1.3 установлены через docker.com apt-репо; user1 в группе `docker`; рабочая директория `/home/user1/telegram-aggregator/`. IP/user в локальной памяти Claude, не в репо. Pending kernel upgrade `5.15.0-161` → `5.15.0-176` (low priority).
+- [x] **Deploy SSH-ключ для CI** (`~/.ssh/telegram_agregator_deploy_ed25519` на машине Максима, без passphrase) сгенерирован, pub в `authorized_keys` на VPS. Приватка залита в GitHub Secret `DEV_SSH_KEY` через `gh secret set < keyfile` (UI-paste мангал ключ — пришлось перезалить из файла).
+- [x] **GitHub Secrets `DEV_VPS_HOST=87.242.87.8` / `DEV_VPS_USER=user1` / `DEV_SSH_KEY=<priv>`** в репо. Верифицированы workflow_dispatch'ем `.github/workflows/smoke-dev-vps.yml` (на `main`): SSH handshake → `user1@vm-test`, sudo passwordless, docker 29.4.1, compose v5.1.3, docker-group ACTIVE — всё ✅. Workflow остался в репо как ручной health-check.
+- [x] **Compose smoke на VPS:** `docker compose -f infra/compose/docker-compose.yml --env-file ../env/backend.env up -d postgres redis` с одноразовым рандомным POSTGRES_PASSWORD — postgres:16-alpine + redis:7-alpine стали healthy за 12 сек. Стек снят `down -v` после теста.
+- [x] **`infra/env/backend.env.example`** добавлен в репо (PR #25): шаблон env-файла для compose `env_file:` directive со всеми обязательными полями `Settings`. `.gitignore` re-include для `infra/env/` (Python-virtualenv pattern маскировал директорию). `.gitleaks.toml` allowlist для `*.env.example` чтобы generic-api-key rule не падал на placeholder'ах.
+- [x] **CI tooling:** `gh` CLI 2.91.0 поставлен на машину Максима (winget), авторизован под `SigmeD` (token scopes: `gist, read:org, repo, workflow`). `alembic.ini`: `path_separator = os` (alembic ≥1.14 deprecation, 2.0 хард-эррор). `security.yml`: `aquasecurity/trivy-action@v0.36.0` + `limit-severities-for-sarif: true` (без него action emit'ит SARIF со всеми severities → exit-code 1 на любую находку).
 
 **Не сделано (блокеры для Sprint 1):**
-- [ ] GitHub Secrets залиты (после явного разрешения Максима — см. список в `infra/README.md`)
-- [ ] Dev VPS предоставлен (Hetzner/Timeweb): host, user, SSH-ключи в GitHub Secrets (`DEV_VPS_HOST`, `DEV_VPS_USER`, `DEV_SSH_KEY`)
-- [ ] Telethon session сгенерирована вручную на VPS (требует SMS-код, в CI не автоматизируется)
-- [ ] SQLAlchemy-модели написаны (`backend/src/shared/db/models.py` — сейчас stub)
-- [ ] Первая миграция `0001_initial.py` для FEATURE-01..03 (telegram_sources, raw_messages, keyword_triggers)
-- [ ] Sprint 1: реализация FEATURE-01 (Telegram auth), FEATURE-02 (sources CRUD), FEATURE-03 (Telethon listener), FEATURE-04 (keyword filter)
-- [ ] Dependabot PR #12 (Next.js 15→16 major bump) — разобрать: merge либо закрыть (преждевременный мажор)
+- [ ] **PR `develop → main`** — develop сейчас опережает main на 5+ коммитов: PR #18 (DB foundation), #20–22 (deps), #25 (alembic/env/gitleaks/trivy). Main параллельно получил smoke-dev-vps workflow + bandit/ruff/mypy/ci-backend фиксы (PR #23-24). Слияние — manual call Максима, ожидаются мелкие конфликты в `.github/workflows/security.yml` и `ci-backend.yml`.
+- [ ] **Backend Docker image** (`infra/docker/backend.Dockerfile`) собран и запущен в compose как `migrate` / `backend-listener` / `backend-worker` / `backend-api` / `backend-bot`. Без `backend/uv.lock` сборка идёт по slow fallback `uv sync --no-install-project` без `--frozen`. ~5–8 мин на dev VPS.
+- [ ] **`backend/uv.lock`** сгенерирован и закоммичен — для reproducible builds + ускорения CI/CD.
+- [ ] **Telethon session** сгенерирована вручную на VPS (требует SMS-код, в CI не автоматизируется).
+- [ ] **Seed-скрипт:** 30+ источников + начальный словарь keyword-триггеров (`make seed` → `backend/src/shared/db/seed.py` + YAML в `backend/seeds/`).
+- [ ] Sprint 1: реализация FEATURE-01 (Telegram auth), FEATURE-02 (sources CRUD), FEATURE-03 (Telethon listener), FEATURE-04 (keyword filter).
+- [ ] Follow-up: `tests/unit/test_smoke.py::test_module_imports[worker.*]` падает на pre-existing проблеме — `worker/celery_app.py:45` вызывает `create_app()` на module-level, который зовёт `get_settings()` без env vars. Фикс: либо lazy-init Celery-app, либо `tests/conftest.py` с дефолтными env vars.
+- [ ] Follow-up: testing group bump (vitest 2→4 + jsdom 25→29) — отдельный PR после миграционного codemod'а vitest v4.
 
 **Открытые вопросы (требуют решения Максима):**
 - Prod vs dev VPS — один сервер с разными compose-проектами или два?

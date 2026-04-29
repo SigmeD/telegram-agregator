@@ -21,12 +21,12 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0,<3.0",
     "alembic>=1.13,<2.0",
     "asyncpg>=0.29,<1.0",
-    "redis>=5.0,<6.0",
+    "redis>=5.0,<8.0",
     # Background jobs
     "celery>=5.3,<6.0",
     # LLM providers
     "anthropic>=0.25,<1.0",
-    "openai>=1.20,<2.0",
+    "openai>=1.20,<3.0",
     # Configuration / serialization
     "pydantic>=2.6,<3.0",
     "pydantic-settings>=2.2,<3.0",
@@ -37,18 +37,19 @@ dependencies = [
     "sentry-sdk>=1.45,<3.0",
     # Auth helpers
     "pyjwt>=2.8,<3.0",
-    "cryptography>=42.0,<43.0",
+    "cryptography>=42.0,<47.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.1,<9.0",
     "pytest-asyncio>=0.23,<1.0",
-    "pytest-cov>=5.0,<6.0",
+    "pytest-cov>=5.0,<8.0",
     "ruff>=0.3,<1.0",
-    "black>=24.3,<25.0",
     "mypy>=1.9,<2.0",
     "testcontainers[postgres,redis]>=4.2,<5.0",
+    "pytest-xdist>=3.5,<4.0",
+    "types-PyYAML>=6.0,<7.0",
 ]
 
 [project.scripts]
@@ -88,7 +89,7 @@ select = [
     "RUF", # ruff-specific
 ]
 ignore = [
-    "E501", # handled by black
+    "E501", # handled by ruff format
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -97,14 +98,6 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["shared", "listener", "worker", "api", "bot"]
-
-# ---------------------------------------------------------------------------
-# Black
-# ---------------------------------------------------------------------------
-[tool.black]
-line-length = 100
-target-version = ["py311"]
-extend-exclude = "migrations/versions"
 
 # ---------------------------------------------------------------------------
 # Mypy
@@ -125,6 +118,13 @@ namespace_packages = true
 [[tool.mypy.overrides]]
 module = ["telethon.*", "celery.*", "testcontainers.*"]
 ignore_missing_imports = true
+
+# Celery's ``@app.task`` decorator is untyped in celery-stubs; blanket
+# disabling ``disallow_untyped_decorators`` for task modules keeps strict
+# mode everywhere else while accepting this single unavoidable un-typed call.
+[[tool.mypy.overrides]]
+module = ["worker.tasks.*"]
+disallow_untyped_decorators = false
 
 # ---------------------------------------------------------------------------
 # Pytest

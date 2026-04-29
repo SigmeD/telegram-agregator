@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -20,9 +21,24 @@ from sqlalchemy.orm import DeclarativeBase
 
 from shared.config import get_settings
 
+NAMING_CONVENTION: dict[str, str] = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+
 
 class Base(DeclarativeBase):
-    """Declarative base for all ORM models."""
+    """Declarative base for all ORM models.
+
+    The custom ``MetaData`` naming convention makes Alembic autogenerate
+    produce deterministic constraint/index names — changing a name is a
+    schema migration, not an accident.
+    """
+
+    metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
 @lru_cache(maxsize=1)

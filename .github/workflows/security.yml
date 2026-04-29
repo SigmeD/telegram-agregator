@@ -40,7 +40,7 @@ jobs:
           version: "0.5.x"
           enable-cache: true
           cache-dependency-glob: "backend/pyproject.toml"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: uv sync --extra dev
@@ -85,9 +85,10 @@ jobs:
           output: trivy-fs.sarif
           # Without this, the action builds SARIF with ALL severities and
           # `exit-code: 1` fires on any finding regardless of `severity`
-          # filter — see aquasecurity/trivy-action#1099.
+          # filter — see aquasecurity/trivy-action#1099. (Currently the
+          # MEDIUM postcss CVE-2026-41305, transitive via next 15.5.x.)
           limit-severities-for-sarif: "true"
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-fs.sarif
@@ -101,7 +102,7 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: pip install bandit[toml]==1.7.9

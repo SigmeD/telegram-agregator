@@ -1,0 +1,45 @@
+# markdownlint-cli2 config.
+# MD013 (line-length) is disabled: the project has long Russian paragraphs
+# (BUSINESS_RULES.md, CLAUDE.md, ADRs, TZ) where wrapping at 80 chars breaks
+# readability and search — we prefer soft-wrap in the editor.
+#
+# Reference: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+# Start from the default ruleset, then override individual rules below.
+default: true
+
+# Line length — disabled (see header).
+MD013: false
+
+# Multiple blank lines — allow up to 2 (common in long tables/sections).
+MD012:
+  maximum: 2
+
+# First line H1 requirement — disabled for PR/issue templates.
+MD041: false
+
+# Emphasis as heading — allow; we use **bold** inside regular paragraphs.
+MD036: false
+
+# Inline HTML — allow (we use <details>, <summary>, <kbd>).
+MD033: false
+
+# Bare URLs — allow (common in CHANGELOG links).
+MD034: false
+
+# Blanks-around-headings/lists/fences — noisy on migrated legacy docs.
+# Real structural issues still get caught by MD001/003/018/036.
+MD022: false
+MD031: false
+MD032: false
+
+# Duplicate headings — we intentionally use "### Added" in multiple release
+# blocks of CHANGELOG per Keep-a-Changelog style.
+MD024: false
+
+# Ordered list prefix — Keep-a-Changelog uses 1. 2. 3. inconsistently,
+# and runbook numbered sections reset across subsections.
+MD029: false
+
+# Fenced-code-language — optional; plain ``` blocks are fine for shell/output.
+MD040: false
