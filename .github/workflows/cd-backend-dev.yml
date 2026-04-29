@@ -95,15 +95,19 @@ jobs:
           key: ${{ secrets.DEV_SSH_KEY }}
           port: ${{ secrets.DEV_SSH_PORT || 22 }}
           envs: IMAGE_TAG,SKIP_MIGRATIONS,POSTGRES_PASSWORD,ANTHROPIC_API_KEY,OPENAI_API_KEY,TELEGRAM_API_ID,TELEGRAM_API_HASH,TELEGRAM_PHONE,NOTIFY_BOT_TOKEN,NOTIFY_BOT_ADMIN_CHAT_ID,JWT_SECRET,TELETHON_SESSION_KEY,SENTRY_DSN
-          script_stop: true
           script: |
-            set -e  # `-u` dropped: appleboy/ssh-action strips empty env vars (e.g. SENTRY_DSN/OPENAI_API_KEY placeholders), and dash trips on `export` of unset names. Required-secret enforcement lives in deploy.sh's `set -Eeuo pipefail` + `:?` assertions.
+            set -e
+            echo "STEP_PRE: pwd=$(pwd) user=$(whoami)"
             cd /home/user1/telegram-aggregator
+            echo "STEP_CD: pwd=$(pwd) head=$(git rev-parse --short HEAD 2>/dev/null || echo none)"
             git fetch --depth 1 origin develop
+            echo "STEP_FETCH: ok"
             git checkout -f origin/develop
+            echo "STEP_CHECKOUT: head=$(git rev-parse --short HEAD)"
             export POSTGRES_PASSWORD ANTHROPIC_API_KEY OPENAI_API_KEY TELEGRAM_API_ID \
                    TELEGRAM_API_HASH TELEGRAM_PHONE NOTIFY_BOT_TOKEN NOTIFY_BOT_ADMIN_CHAT_ID \
                    JWT_SECRET TELETHON_SESSION_KEY SENTRY_DSN
+            echo "STEP_EXPORT: ok"
             if [ "${SKIP_MIGRATIONS}" = "true" ]; then
               bash infra/scripts/deploy.sh dev "${IMAGE_TAG}" --skip-migrations
             else

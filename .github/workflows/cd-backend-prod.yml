@@ -63,9 +63,8 @@ jobs:
           key: ${{ secrets.PROD_SSH_KEY }}
           port: ${{ secrets.PROD_SSH_PORT || 22 }}
           envs: IMAGE_TAG,SKIP_MIGRATIONS,POSTGRES_PASSWORD,ANTHROPIC_API_KEY,OPENAI_API_KEY,TELEGRAM_API_ID,TELEGRAM_API_HASH,TELEGRAM_PHONE,NOTIFY_BOT_TOKEN,NOTIFY_BOT_ADMIN_CHAT_ID,JWT_SECRET,TELETHON_SESSION_KEY,SENTRY_DSN
-          script_stop: true
           script: |
-            set -e  # `-u` dropped: appleboy/ssh-action strips empty env vars (e.g. SENTRY_DSN/OPENAI_API_KEY placeholders), and dash trips on `export` of unset names. Required-secret enforcement lives in deploy.sh's `set -Eeuo pipefail` + `:?` assertions.
+            set -e
             cd /home/user1/telegram-aggregator
             git fetch --depth 1 origin main
             git checkout -f origin/main
