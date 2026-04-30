@@ -5,6 +5,8 @@
 ## [Unreleased]
 
 ### Added
+- **2026-04-30** `frontend/src/features/.gitkeep` — каталог-плейсхолдер из CLAUDE.md (`src/{app,components,features,lib,test}/`); фактическое наполнение появится с первой feature-сборкой (FEATURE-02 sources CRUD).
+- **2026-04-30** `docs/business_rules.md` — stub-redirect на корневой `BUSINESS_RULES.md`. Канонический источник остаётся в корне; файл в `docs/` нужен только для навигации (Windows-friendly, без symlink).
 - **2026-04-27** Seed loader (`shared.db.seed`, `make seed`) + миграция `0002_chat_id_nullable`. Loader идемпотентен: источники upsert'ятся по `lower(username)` (`chat_id` остаётся NULL до резолва listener'ом), триггеры — `INSERT … ON CONFLICT (keyword, language) DO UPDATE`. Engine читает `DATABASE_URL` из `os.environ` напрямую (тот же decoupling-паттерн, что в `migrations/env.py` — без `Settings`/secrets). Стартовый набор в YAML: 32 источника (founders/vc/accel/regional) + 33 триггера (direct_request/pain_signal/lifecycle_event/negative).
 - **2026-04-27** Миграция `0002`: `telegram_sources.chat_id` → `nullable=True`; `UNIQUE` constraint заменён на partial unique index `uq_telegram_sources_chat_id WHERE chat_id IS NOT NULL`. Семантика: «pending source» сидится без chat_id, listener (FEATURE-03) backfill'ит при первом подключении. Downgrade fail-fast: если в БД остались строки с `chat_id IS NULL`, downgrade поднимает RuntimeError вместо падения посередине.
 - **2026-04-27** 14 интеграционных тестов в `test_seed.py` против Postgres 15 (testcontainers): nullable chat_id (multiple NULLs OK, partial unique enforces non-null uniqueness, indexdef содержит WHERE-clause), `seed_sources` (insert/idempotent/update/case-insensitive username/reject-no-username/reject-bad-priority), `seed_triggers` (insert/idempotent/update/distinct-languages/reject-bad-type), real-YAML smoke (≥30 источников, ≥25 триггеров).
@@ -20,15 +22,16 @@
 - CI/CD workflow'ы: `ci-backend`, `ci-frontend`, `ci-docs`, `security`, `cd-backend-dev`, `cd-backend-prod` (manual), `release`.
 - Makefile, `.pre-commit-config.yaml`, `.editorconfig`, CONTRIBUTING, SECURITY, LICENSE.
 
-### Security
-- Gitleaks настроен в pre-commit и в `security.yml` CI.
-- Session-файл Telethon шифруется AES-256, ключ — только в env на VPS.
-
 ### Changed
+- **2026-04-30** CLAUDE.md переработан под универсальный шаблон v3 (242 → 378 строк): 6 общих правил → 15 жёстких правил с конкретными именами скилов / агентов / MCP; добавлены workflow-pipeline (15 шагов: эпик → brainstorm → plan → TDD → review → verify → deploy → finish), реестр инструментов (20 скилов / 9 subagent'ов / 4 MCP / hooks / memory system с путём `~/.claude/projects/D--Projects-telegram-agregator/memory/`), раздел «Контакты», структурированная таблица «State не в git». Сохранены все project-specific блоки (архитектура, стек, репо-структура, среды, VPS-gotchas, Текущий статус с историей PR #20-50).
+- **2026-04-30** Диаграмма репо в CLAUDE.md дополнена: `frontend/src/{app,components,features,lib,test}/` (был `{app,components,features,lib}` — отсутствовал `test/` для vitest setup).
 - **2026-04-24** GitHub remote подключён: https://github.com/SigmeD/telegram-agregator. Запушены ветки `main` и `develop` (initial commit rebased на auto-сгенерированный remote-commit, наш README сохранён).
 - **2026-04-24** Superpowers plugin установлен через `/plugin install superpowers@claude-plugins-official` — добавляет 14 skills (brainstorming, writing-plans, executing-plans, tdd, verification-before-completion и др.) и 6 subagent'ов для параллельной работы.
 - **2026-04-24** GitHub Environment `production` защищён Required reviewers — `cd-backend-prod.yml` не сработает без ручного одобрения Максима. Правило «prod deploy только по разрешению» закрыто на уровне платформы.
 - `.gitattributes` добавлен — LF enforcement для shell-скриптов, критично для Linux VPS.
+
+### Removed
+- **2026-04-30** `backend/migrations/versions/.gitkeep` и `backend/tests/integration/.gitkeep` — устаревшие плейсхолдеры. В `versions/` лежат миграции `0001_initial`, `0002_chat_id_nullable`; в `tests/integration/` — `test_migration_0001`, `test_migration_roundtrip`, `test_seed`. `frontend/src/components/ui/.gitkeep` оставлен до первой `npx shadcn add` команды.
 
 ### Fixed
 - **2026-04-29** CD: `cd-backend-dev` deploy указывал на несуществующую `/opt/tlg`. Реальный git-checkout на VPS — `/home/user1/telegram-aggregator/` (склонирован вручную в эту сессию: дир была пустая после compose-смоук-уборки 2026-04-26). Поправили `cd /opt/tlg` → `cd /home/user1/telegram-aggregator` в `cd-backend-{dev,prod}.yml`. Прод-workflow получает тот же фикс на упреждение, хотя prod-VPS пока не настроен.
@@ -38,6 +41,10 @@
 - **2026-04-24** Vercel build fail `pnpm install --frozen-lockfile exit 1` (headless install без lockfile). Причина: workspace lockfile лежал на уровень выше Root Directory `frontend/` и Vercel его не видел. Решение — отложили pnpm workspace до появления shared-пакетов (ADR-0007), lockfile перенесён в `frontend/pnpm-lock.yaml`.
 - **2026-04-24** Vercel build fail на `globals.css` (Next.js webpack error). Причина: postcss.config.mjs использовал `@tailwindcss/postcss`, но этот пакет не был в package.json (Tailwind 4 выпустил PostCSS-плагин отдельно). Решение — добавлены `@tailwindcss/postcss` и `postcss` в devDependencies.
 - **2026-04-24** Vercel git-triggered deploys падали с 0ms error. Две причины: (1) dashboard-стэйт проекта хранил старый ignoreCommand `git diff ... ../pnpm-lock.yaml`, невалидный после переноса lockfile; vercel.json обновляет только CLI-deploys, не git-webhooks. (2) Project rootDirectory был null → Vercel клонил в корень репо и команда билда не находила frontend/. Решение — через Vercel REST API: обнулён commandForIgnoringBuildStep, установлен rootDirectory=frontend.
+
+### Security
+- Gitleaks настроен в pre-commit и в `security.yml` CI.
+- Session-файл Telethon шифруется AES-256, ключ — только в env на VPS.
 
 ### Added
 - **2026-04-24** Первый успешный Vercel preview-деплой: https://telegram-agregator-ezxlixyl4-maxeroxinllm-5214s-projects.vercel.app (target=preview, Ready, 47s build). Требует авторизации через Vercel SSO (Deployment Protection включён — это ОК для внутренней dev-площадки).
