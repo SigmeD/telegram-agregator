@@ -153,7 +153,9 @@ class SessionManager:
 # infra/compose/docker-compose.yml (backend-listener.tmpfs) — wiped on every
 # container start, so a SIGKILL'd predecessor's stale marker cannot fool the
 # healthcheck during the restart window.
-_ALIVE_MARKER_PATH = Path("/tmp/tlg-listener.alive")
+# Intentional /tmp path — tmpfs-mounted per infra/compose/docker-compose.yml;
+# cross-process healthcheck marker, wiped on container restart.
+_ALIVE_MARKER_PATH = Path("/tmp/tlg-listener.alive")  # nosec B108
 
 
 def _mark_alive() -> None:

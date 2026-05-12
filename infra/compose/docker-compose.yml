@@ -107,7 +107,7 @@ services:
   bootstrap:
     <<: *backend-common
     profiles: ["bootstrap"]
-    command: ["python", "-m", "shared.telegram.bootstrap"]
+    command: ["bootstrap"]
     tty: true
     stdin_open: true
     restart: "no"

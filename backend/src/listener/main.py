@@ -79,6 +79,11 @@ async def _reconcile_sources(
             try:
                 entity = await client.get_entity(src.username)
             except Exception as exc:
+                # TODO(Phase 2): FloodWait sleep happens inside this async-with block,
+                # holding a DB connection for up to ~66s. Acceptable for Phase 1
+                # single-replica + small pool; revisit when listener scales or pool
+                # contention surfaces. Fix: detect FloodWaitError before opening
+                # the session and sleep without DB context.
                 async with sessionmaker() as s:
                     await handle_telegram_exception(exc, source_id=src.id, db=s)
                 await asyncio.sleep(0.3)
