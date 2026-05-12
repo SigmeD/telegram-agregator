@@ -25,13 +25,13 @@ services:
     <<: *dev-image
     environment:
       ENV: dev
-      LOG_LEVEL: debug
+      LOG_LEVEL: DEBUG
 
   backend-listener:
     <<: *dev-image
     environment:
       ENV: dev
-      LOG_LEVEL: debug
+      LOG_LEVEL: DEBUG
     # Hot-reload in dev: mount source on top of the baked-in copy.
     volumes:
       - ../../backend/src:/app/src:ro
@@ -41,7 +41,7 @@ services:
     <<: *dev-image
     environment:
       ENV: dev
-      LOG_LEVEL: debug
+      LOG_LEVEL: DEBUG
       WORKER_CONCURRENCY: "2"
     volumes:
       - ../../backend/src:/app/src:ro
@@ -50,7 +50,7 @@ services:
     <<: *dev-image
     environment:
       ENV: dev
-      LOG_LEVEL: debug
+      LOG_LEVEL: DEBUG
       API_WORKERS: "1"
     volumes:
       - ../../backend/src:/app/src:ro
@@ -61,6 +61,6 @@ services:
     <<: *dev-image
     environment:
       ENV: dev
-      LOG_LEVEL: debug
+      LOG_LEVEL: DEBUG
     volumes:
       - ../../backend/src:/app/src:ro

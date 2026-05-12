@@ -310,9 +310,11 @@ Auto-memory: `C:\Users\Max\.claude\projects\D--Projects-telegram-agregator\memor
 
 Не сохранять: file paths, git history, debug recipes, code patterns (выводимо из репо).
 
-## Текущий статус (2026-04-30)
+## Текущий статус (2026-05-12)
 
 Репозиторий: https://github.com/SigmeD/telegram-agregator · Vercel project: `maxeroxinllm-5214s-projects/telegram-agregator` · Latest working preview: `telegram-agregator-fjog3lpr8-maxeroxinllm-5214s-projects.vercel.app`.
+
+**С 2026-04-30 — 11 дней простоя**: 0 merge в `develop`, последний коммит — `833fff5 chore(repo): align file structure with CLAUDE.md`. По коду / Sprint 1 движения не было. Накопились только Dependabot-PR: на сегодня 16 открытых (было 14 на 2026-04-27), +3 свежих от 2026-05-11 — `#51` Node 20→26 (`infra/docker`), `#52` cryptography `<47→<49`, `#53` mypy `<2→<3`. Решений по ним пока нет.
 
 **Сделано:**
 - [x] ТЗ зафиксировано (`TZ_Telegram_Lead_Aggregator.md`)
@@ -341,12 +343,9 @@ Auto-memory: `C:\Users\Max\.claude\projects\D--Projects-telegram-agregator\memor
 
 **Не сделано (блокеры для Sprint 1):**
 - [ ] **FEATURE-03 (Telethon listener) не реализован.** `backend-listener` в restart loop с `NotImplementedError: SessionManager.connect is not implemented yet` (`backend/src/shared/telegram/session_manager.py:33`). Это **ожидаемое состояние**, не баг — listener будет работать когда реализуют код + сгенерируют Telethon session-файл интерактивно на VPS (SMS-код).
-- [ ] **`backend-worker` падает на pydantic validation:** `LOG_LEVEL: Input should be 'DEBUG'/'INFO'/.../'CRITICAL'` — в `infra/compose/docker-compose.dev.yml` все 4 сервиса имеют `LOG_LEVEL: debug` (lowercase), а `Settings` ждёт UPPERCASE enum. Однострочный фикс при первом касании в Sprint 1.
 - [ ] **`backend-api` `Created` (не started)** — race на `127.0.0.1:8000` при recreate. Решается `docker compose down -v` на VPS перед deploy либо retry. До Sprint 1 — не критично.
-- [ ] **Debug-инструментация в `cd-backend-dev.yml`** — `bash -x`, STEP_*-echo, stderr→stdout. Откатить после стабилизации Sprint 1.
 - [ ] Sprint 1: реализация FEATURE-01 (Telegram auth), FEATURE-02 (sources CRUD), FEATURE-03 (Telethon listener), FEATURE-04 (keyword filter).
-- [ ] Follow-up: `tests/unit/test_smoke.py::test_module_imports[worker.*]` падает на pre-existing проблеме — `worker/celery_app.py:45` вызывает `create_app()` на module-level, который зовёт `get_settings()` без env vars. Фикс: либо lazy-init Celery-app, либо `tests/conftest.py` с дефолтными env vars.
-- [ ] Follow-up: 14 открытых Dependabot PR на 2026-04-27 — 5× GHA bumps + 5× frontend (zod 3→4, vitest 2→4 + jsdom 25→29, lucide-react minor, react-hook-form minor, next group) + 4× backend pip range widening.
+- [ ] Follow-up: **16 открытых Dependabot PR** на 2026-05-12 — 5× GHA (`#27` docker/login, `#28` pnpm/action-setup, `#29` docker/build-push, `#30` actions/setup-node, `#31` docker/setup-buildx) + 5× frontend (`#36` next group, `#37` testing group vitest 2→4 + jsdom 25→29 [force-push'ен 2026-05-04], `#38` react-hook-form minor, `#39` zod 3→4 major, `#44` lucide-react minor) + 5× backend pip (`#32` structlog `<26`, `#33` pytest-asyncio `<2`, `#35` pytest `<10`, `#52` cryptography `<49`, `#53` mypy `<3`) + 1× docker base (`#51` Node 20→26 в `infra/docker`).
 
 **Открытые вопросы (требуют решения Максима):**
 - Prod vs dev VPS — один сервер с разными compose-проектами (через `docker-multitenancy`) или два?
