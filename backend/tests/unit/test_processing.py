@@ -55,6 +55,14 @@ async def test_handle_message_writes_row_and_enqueues_celery() -> None:
 
     db_pool, session_ctx = _fake_db_pool()
 
+    # Simulate Postgres ``gen_random_uuid()`` server default — the ORM normally
+    # gets ``msg.id`` populated after commit, but in the mocked-DB world we
+    # assign it at ``add()`` time so the value captured by Celery is non-None.
+    def add_with_id_assignment(msg: Any) -> None:
+        msg.id = uuid4()
+
+    session_ctx.add = MagicMock(side_effect=add_with_id_assignment)
+
     celery_mock = MagicMock()
     with patch("listener.processing.filter_message", celery_mock):
         await handle_message(event, db_pool, source_by_chat_id)
@@ -74,7 +82,7 @@ async def test_handle_message_writes_row_and_enqueues_celery() -> None:
 
     celery_mock.delay.assert_called_once()
     kwargs = celery_mock.delay.call_args.kwargs
-    assert "raw_message_id" in kwargs
+    assert kwargs == {"raw_message_id": str(added_msg.id)}
 
 
 @pytest.mark.unit
@@ -114,3 +122,25 @@ async def test_handle_message_unknown_chat_returns_early() -> None:
 
     db_pool.session.assert_not_called()
     celery_mock.delay.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_handle_message_preserves_null_message_text_for_media_only() -> None:
+    """Media-only message (``raw_text=None``) stores NULL, not empty string."""
+    source = SimpleNamespace(id=uuid4())
+    source_by_chat_id = {-100123456789: source}
+
+    media_obj = SimpleNamespace()  # ``type().__name__`` will be "SimpleNamespace"
+    event = _fake_event(raw_text=None, media=media_obj)
+
+    db_pool, session_ctx = _fake_db_pool()
+
+    celery_mock = MagicMock()
+    with patch("listener.processing.filter_message", celery_mock):
+        await handle_message(event, db_pool, source_by_chat_id)
+
+    added_msg = session_ctx.add.call_args.args[0]
+    assert added_msg.message_text is None
+    assert added_msg.has_media is True
+    assert added_msg.media_type == "SimpleNamespace"

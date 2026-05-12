@@ -16,6 +16,8 @@ from worker.tasks.filter_keywords import filter_message
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from shared.db.tables.telegram_source import TelegramSource
+
 logger = structlog.get_logger(__name__)
 
 
@@ -45,7 +47,7 @@ def _extract_thread_id(event: Any) -> int | None:
 async def handle_message(
     event: Any,
     db_pool: Any,
-    source_by_chat_id: Mapping[int, Any],
+    source_by_chat_id: Mapping[int, TelegramSource],
 ) -> None:
     """Persist ``event`` as a ``raw_messages`` row and enqueue the keyword filter.
 
@@ -66,7 +68,7 @@ async def handle_message(
             sender_id=event.sender_id,
             sender_username=getattr(sender, "username", None) if sender is not None else None,
             sender_name=_full_name(sender),
-            message_text=event.raw_text or "",
+            message_text=event.raw_text,
             has_media=bool(event.media),
             media_type=type(event.media).__name__ if event.media else None,
             reply_to_message_id=event.reply_to_msg_id,
