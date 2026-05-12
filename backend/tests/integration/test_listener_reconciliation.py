@@ -31,6 +31,7 @@ from testcontainers.postgres import PostgresContainer
 from listener.main import _reconcile_sources
 from shared.db.session import Base
 from shared.db.tables.telegram_source import TelegramSource
+from tests.integration.conftest import _to_async_url
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
@@ -47,16 +48,13 @@ async def db_session_factory(
     lifetime.
     """
 
-    sync_url = postgres_container.get_connection_url()
-    url = sync_url.replace("+psycopg2", "+asyncpg").replace(
-        "postgresql://", "postgresql+asyncpg://"
-    )
+    url = _to_async_url(postgres_container.get_connection_url())
     engine = create_async_engine(url, future=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    sessionmaker = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
+    async_sm = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
     try:
-        yield sessionmaker
+        yield async_sm
     finally:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
