@@ -14,7 +14,12 @@ from shared.telegram import bootstrap
 
 @pytest.fixture
 def env_setup(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
-    """Populate Settings env (with a real Fernet key) and clear get_settings cache."""
+    """Override Settings env with a known Fernet key so the test can decrypt the blob.
+
+    ``get_settings`` is ``lru_cache``-d, so we ``cache_clear()`` around the test
+    to make sure the bootstrap picks up our key rather than the (also valid)
+    conftest-generated one.
+    """
     from shared import config
 
     key = Fernet.generate_key().decode()
@@ -27,8 +32,6 @@ def env_setup(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     for k, v in env.items():
         monkeypatch.setenv(k, v)
 
-    # conftest pre-populates a non-Fernet TELETHON_SESSION_KEY; the cached
-    # Settings instance must be discarded so the bootstrap picks up our key.
     config.get_settings.cache_clear()
     yield env
     config.get_settings.cache_clear()
@@ -56,6 +59,8 @@ async def test_bootstrap_writes_encrypted_blob_to_target_path(
     assert target.exists()
     decrypted = Fernet(env_setup["TELETHON_SESSION_KEY"].encode()).decrypt(target.read_bytes())
     StringSession(decrypted.decode())  # no error → valid
+    fake_client.start.assert_awaited_once()
+    fake_client.disconnect.assert_awaited_once()
 
 
 @pytest.mark.unit

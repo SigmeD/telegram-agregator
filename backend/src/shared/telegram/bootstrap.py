@@ -30,11 +30,9 @@ logger = structlog.get_logger(__name__)
 
 DEFAULT_OUTPUT_PATH = Path("/var/lib/tlg/sessions/tlg_aggregator.session.enc")
 
-# Alias builtins as module attributes so tests can ``monkeypatch.setattr``
-# them on this module (``builtins.input`` would otherwise stay bound at the
-# C level and bypass the patch).
-input = input  # intentional shadowing of builtin for test patchability
-_getpass = getpass.getpass
+# Alias builtins so tests can ``monkeypatch.setattr(bootstrap, "input", ...)``
+# scoped to this module only, without globally replacing ``builtins.input``.
+input = input  # intentional builtin shadow
 
 
 async def run_bootstrap(*, output_path: Path = DEFAULT_OUTPUT_PATH) -> None:
@@ -63,7 +61,7 @@ async def run_bootstrap(*, output_path: Path = DEFAULT_OUTPUT_PATH) -> None:
         return input("Enter SMS code: ").strip()
 
     def _password_cb() -> str | None:
-        return _getpass("Enter 2FA password (or empty): ").strip() or None
+        return getpass.getpass("Enter 2FA password (or empty): ").strip() or None
 
     try:
         await client.start(
@@ -72,13 +70,12 @@ async def run_bootstrap(*, output_path: Path = DEFAULT_OUTPUT_PATH) -> None:
             password=_password_cb,
         )
         session_str: str = client.session.save()
+        blob = Fernet(key).encrypt(session_str.encode())
+        output_path.write_bytes(blob)
+        with contextlib.suppress(OSError, PermissionError):
+            output_path.chmod(0o600)
     finally:
         await client.disconnect()
-
-    blob = Fernet(key).encrypt(session_str.encode())
-    output_path.write_bytes(blob)
-    with contextlib.suppress(OSError, PermissionError):
-        output_path.chmod(0o600)
 
     size = output_path.stat().st_size
     print(f"Session saved to {output_path}. Size: {size} bytes.")
