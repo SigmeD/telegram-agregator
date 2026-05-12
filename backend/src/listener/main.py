@@ -7,7 +7,6 @@ Run via container CMD ``listener`` (resolves to ``python -m listener``).
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import signal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -29,6 +28,11 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
+# TODO(Phase 2): move to settings.SESSION_PATH when session rotation lands.
+# This path is duplicated in:
+#   - infra/compose/docker-compose.yml (volume mount target)
+#   - infra/scripts/rotate-session.sh
+# Single source of truth needed when rotation/multi-account ships.
 SESSION_PATH = Path("/var/lib/tlg/sessions/tlg_aggregator.session.enc")
 
 
@@ -95,10 +99,17 @@ async def _reconcile_sources(
 
 
 async def _wait_for_shutdown(stop_event: asyncio.Event, client: TelegramClient) -> None:
-    """Block until SIGTERM/SIGINT, then trigger ``client.disconnect()``."""
+    """Block until SIGTERM/SIGINT, then trigger ``client.disconnect()`` with timeout.
+
+    Bounded ``asyncio.wait_for`` keeps us under Docker's default 10s grace period
+    so SIGKILL doesn't fire before the final session save flushes.
+    """
     await stop_event.wait()
     logger.info("listener_shutdown_signal_received")
-    await client.disconnect()
+    try:
+        await asyncio.wait_for(client.disconnect(), timeout=8.0)
+    except TimeoutError:
+        logger.warning("listener_disconnect_timeout", timeout=8.0)
 
 
 async def run() -> None:
@@ -116,27 +127,40 @@ async def run() -> None:
     client = await session_mgr.connect()
     sessionmaker = get_sessionmaker()
     engine = get_engine()
-    pool = _SessionPool(sessionmaker)
-
-    source_by_chat_id = await _reconcile_sources(client, sessionmaker)
-    if not source_by_chat_id:
-        logger.warning("listener_started_with_no_sources")
-
-    @client.on(events.NewMessage(chats=list(source_by_chat_id)))  # type: ignore[untyped-decorator]
-    async def _handler(event: Any) -> None:
-        await handle_message(event, pool, source_by_chat_id)
-
-    stop_event = asyncio.Event()
-    loop = asyncio.get_running_loop()
-    for sig_name in ("SIGTERM", "SIGINT"):
-        sig = getattr(signal, sig_name, None)
-        if sig is None:
-            continue
-        with contextlib.suppress(NotImplementedError):
-            loop.add_signal_handler(sig, stop_event.set)
-
-    logger.info("listener_ready", source_count=len(source_by_chat_id))
     try:
+        pool = _SessionPool(sessionmaker)
+
+        source_by_chat_id = await _reconcile_sources(client, sessionmaker)
+        if not source_by_chat_id:
+            logger.warning("listener_started_with_no_sources")
+
+        @client.on(events.NewMessage(chats=list(source_by_chat_id)))  # type: ignore[untyped-decorator]
+        async def _handler(event: Any) -> None:
+            await handle_message(event, pool, source_by_chat_id)
+
+        stop_event = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        registered_signals: list[str] = []
+        for sig_name in ("SIGTERM", "SIGINT"):
+            sig = getattr(signal, sig_name, None)
+            if sig is None:
+                continue
+            try:
+                loop.add_signal_handler(sig, stop_event.set)
+                registered_signals.append(sig_name)
+            except NotImplementedError:
+                pass
+
+        if not registered_signals:
+            logger.warning(
+                "listener_signal_handlers_unavailable",
+                reason="event_loop_lacks_add_signal_handler",
+                impact="graceful shutdown via SIGTERM/SIGINT will not work; SIGKILL only",
+            )
+        else:
+            logger.info("listener_signals_registered", signals=registered_signals)
+
+        logger.info("listener_ready", source_count=len(source_by_chat_id))
         await asyncio.gather(
             client.run_until_disconnected(),
             _wait_for_shutdown(stop_event, client),
