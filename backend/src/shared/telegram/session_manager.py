@@ -138,8 +138,10 @@ class SessionManager:
 
 # Cross-process liveness marker. Used by docker compose healthcheck which
 # imports this module in a SEPARATE process from the listener — module-level
-# state would not propagate. Path is tmpfs-friendly and scoped to container
-# lifecycle (wiped on container restart, which is the desired liveness model).
+# state would not propagate. Path lives on a tmpfs mount declared in
+# infra/compose/docker-compose.yml (backend-listener.tmpfs) — wiped on every
+# container start, so a SIGKILL'd predecessor's stale marker cannot fool the
+# healthcheck during the restart window.
 _ALIVE_MARKER_PATH = Path("/tmp/tlg-listener.alive")
 
 
@@ -164,6 +166,10 @@ def session_alive() -> bool:
     The marker is written by ``SessionManager.connect()`` and removed by
     ``disconnect()``. Lives at ``/tmp/tlg-listener.alive`` so a separate
     docker healthcheck process can observe it without sharing memory.
+    The container mounts ``/tmp`` as tmpfs (see infra/compose/docker-compose.yml
+    ``backend-listener.tmpfs``) — every container start wipes any stale marker
+    left by a SIGKILL'd predecessor, so a graceful restart cannot report
+    a false-positive HEALTHY before the new process re-touches the file.
 
     The path is module-level so tests can monkeypatch it to a temp location.
     """

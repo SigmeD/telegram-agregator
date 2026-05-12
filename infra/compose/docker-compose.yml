@@ -107,6 +107,12 @@ services:
     depends_on: {}  # no service deps; talks directly to Telegram
     volumes:
       - session-data:/var/lib/tlg/sessions
+    # /tmp as tmpfs — symmetry with backend-listener. session_manager.py
+    # imports module-level Path("/tmp/tlg-listener.alive"); even though
+    # bootstrap doesn't call _mark_alive today, a stray writer would land
+    # on tmpfs (wiped on container start) rather than the writable layer.
+    tmpfs:
+      - "/tmp:size=4m,mode=1777"
 
   # ---------------------------------------------------------------------------
   # Application services — all reuse the same image, differ only by ENTRYPOINT.
@@ -123,6 +129,13 @@ services:
         condition: service_healthy
     volumes:
       - session-data:/var/lib/tlg/sessions
+    # /tmp as actual tmpfs — wiped on every container start, not just on
+    # `docker rm`. Required so the alive-marker at /tmp/tlg-listener.alive
+    # can't survive a SIGKILL → docker restart cycle and produce a
+    # false-positive HEALTHY before the new listener process re-touches it.
+    # 4 MB cap (marker is <100 bytes); mode 1777 = standard /tmp perms.
+    tmpfs:
+      - "/tmp:size=4m,mode=1777"
     healthcheck:
       test:
         - CMD
