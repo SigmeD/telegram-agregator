@@ -11,6 +11,8 @@ import os
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
+from cryptography.fernet import Fernet
+
 # Populate every required-by-Settings env var BEFORE any ``shared.config`` import
 # happens downstream. Module-level ``create_app()`` / ``celery_app.app = ...``
 # patterns otherwise fail in CI with a ValidationError.
@@ -19,7 +21,7 @@ _TEST_ENV_DEFAULTS: dict[str, str] = {
     "TELEGRAM_API_ID": "1",
     "TELEGRAM_API_HASH": "test-api-hash",
     "TELEGRAM_PHONE": "+10000000000",
-    "TELETHON_SESSION_KEY": "test-fernet-key-32-bytes-long-xxx",
+    "TELETHON_SESSION_KEY": Fernet.generate_key().decode(),
     "DATABASE_URL": "postgresql+asyncpg://test:test@localhost/test",
     "REDIS_URL": "redis://localhost:6379/0",
     "ANTHROPIC_API_KEY": "test-anthropic-key",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
@@ -20,13 +21,22 @@ from testcontainers.postgres import PostgresContainer
 # Points to backend/migrations/alembic.ini.
 _ALEMBIC_INI = Path(__file__).resolve().parents[2] / "migrations" / "alembic.ini"
 
+# Matches ``postgresql://`` or ``postgresql+<driver>://`` at the start of a DSN.
+_PG_SCHEME_RE = re.compile(r"^postgresql(?:\+\w+)?://")
 
-def _to_async_url(sync_url: str) -> str:
-    """Convert a ``postgresql+psycopg2://...`` URL to ``postgresql+asyncpg://...``."""
 
-    return sync_url.replace("+psycopg2", "+asyncpg").replace(
-        "postgresql://", "postgresql+asyncpg://"
-    )
+def _to_async_url(url: str) -> str:
+    """Normalise a Postgres URL to the asyncpg driver form, idempotent.
+
+    Handles all four cases:
+
+    * ``postgresql://...`` → ``postgresql+asyncpg://...``
+    * ``postgresql+psycopg2://...`` → ``postgresql+asyncpg://...``
+    * ``postgresql+asyncpg://...`` → unchanged (no-op)
+    * Any other ``postgresql+<driver>://...`` → ``postgresql+asyncpg://...``
+    """
+
+    return _PG_SCHEME_RE.sub("postgresql+asyncpg://", url)
 
 
 @pytest.fixture(scope="session")
