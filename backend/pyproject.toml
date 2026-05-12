@@ -38,6 +38,12 @@ dependencies = [
     # Auth helpers
     "pyjwt>=2.8,<3.0",
     "cryptography>=42.0,<47.0",
+    # Transitive pins (security floor; pulled in by anthropic/openai/sentry-sdk
+    # and alembic respectively). Bumped 2026-05-12 to clear trivy HIGH alerts:
+    # urllib3 — CVE-2026-44432 (decompression bomb), CVE-2026-44431 (header forward).
+    # mako    — CVE-2026-44307 (path-traversal on Windows in TemplateLookup).
+    "urllib3>=2.7.0,<3.0",
+    "mako>=1.3.12,<2.0",
 ]
 
 [project.optional-dependencies]
