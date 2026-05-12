@@ -144,3 +144,90 @@ async def test_handle_message_preserves_null_message_text_for_media_only() -> No
     assert added_msg.message_text is None
     assert added_msg.has_media is True
     assert added_msg.media_type == "SimpleNamespace"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_handle_message_extracts_thread_id_from_forum_topic() -> None:
+    """Event with reply_to.forum_topic_id → thread_id populated from that field."""
+    source = SimpleNamespace(id=uuid4())
+    source_by_chat_id = {-100123456789: source}
+
+    # forum_topic_id branch: event.message.reply_to.forum_topic_id is set
+    reply_to = SimpleNamespace(forum_topic_id=42, reply_to_top_id=None)
+    event = _fake_event(
+        message=SimpleNamespace(reply_to=reply_to),
+    )
+
+    db_pool = MagicMock()
+    session_ctx = AsyncMock()
+    session_ctx.__aenter__.return_value = session_ctx
+    session_ctx.__aexit__.return_value = None
+    session_ctx.commit = AsyncMock()
+    session_ctx.add = MagicMock(side_effect=lambda msg: setattr(msg, "id", uuid4()))
+    db_pool.session.return_value = session_ctx
+
+    with patch("listener.processing.filter_message", MagicMock()):
+        await handle_message(event, db_pool, source_by_chat_id)
+
+    added_msg = session_ctx.add.call_args.args[0]
+    assert added_msg.thread_id == 42
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_handle_message_extracts_thread_id_from_reply_to_top_id() -> None:
+    """Event with reply_to.reply_to_top_id (no forum_topic_id) → thread_id from fallback."""
+    source = SimpleNamespace(id=uuid4())
+    source_by_chat_id = {-100123456789: source}
+
+    # forum_topic_id absent (None), reply_to_top_id set
+    reply_to = SimpleNamespace(forum_topic_id=None, reply_to_top_id=99)
+    event = _fake_event(
+        message=SimpleNamespace(reply_to=reply_to),
+    )
+
+    db_pool = MagicMock()
+    session_ctx = AsyncMock()
+    session_ctx.__aenter__.return_value = session_ctx
+    session_ctx.__aexit__.return_value = None
+    session_ctx.commit = AsyncMock()
+    session_ctx.add = MagicMock(side_effect=lambda msg: setattr(msg, "id", uuid4()))
+    db_pool.session.return_value = session_ctx
+
+    with patch("listener.processing.filter_message", MagicMock()):
+        await handle_message(event, db_pool, source_by_chat_id)
+
+    added_msg = session_ctx.add.call_args.args[0]
+    assert added_msg.thread_id == 99
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_handle_message_logs_celery_failure_but_keeps_row() -> None:
+    """If filter_message.delay() raises, exception is caught and logged;
+    handler returns without re-raising. raw_message is already committed
+    to DB before the enqueue attempt — DB durability invariant preserved."""
+    source = SimpleNamespace(id=uuid4())
+    source_by_chat_id = {-100123456789: source}
+    event = _fake_event()
+
+    db_pool = MagicMock()
+    session_ctx = AsyncMock()
+    session_ctx.__aenter__.return_value = session_ctx
+    session_ctx.__aexit__.return_value = None
+    session_ctx.commit = AsyncMock()
+    session_ctx.add = MagicMock(side_effect=lambda msg: setattr(msg, "id", uuid4()))
+    db_pool.session.return_value = session_ctx
+
+    celery_mock = MagicMock()
+    celery_mock.delay = MagicMock(side_effect=ConnectionRefusedError("redis down"))
+
+    # Should NOT raise — exception is caught and logged.
+    with patch("listener.processing.filter_message", celery_mock):
+        await handle_message(event, db_pool, source_by_chat_id)
+
+    # DB commit DID happen before the failed enqueue.
+    session_ctx.commit.assert_awaited_once()
+    # delay() was attempted.
+    celery_mock.delay.assert_called_once()
