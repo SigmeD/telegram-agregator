@@ -155,6 +155,14 @@ else
 fi
 
 # ---- rollout ---------------------------------------------------------------
+# Pre-remove backend-api so its host port (127.0.0.1:8000) is released BEFORE
+# the new container tries to bind. Without this, `up -d` recreate races the
+# kernel's TCP teardown: old container stops, port still held, new container
+# fails with "address already in use" (observed deploy run 25726662188).
+# `rm -fs` = stop + force-remove; volumes preserved (we never run `down -v`).
+log "freeing host port-binding on backend-api before recreate..."
+"${COMPOSE[@]}" rm -fs backend-api 2>/dev/null || true
+
 log "starting / updating services..."
 "${COMPOSE[@]}" up -d --remove-orphans \
     postgres redis backend-listener backend-worker backend-api backend-bot \
