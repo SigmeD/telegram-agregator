@@ -63,6 +63,7 @@ tlg-listener = "listener.__main__:main"
 tlg-worker = "worker.celery_app:main"
 tlg-api = "api.main:main"
 tlg-bot = "bot.__main__:main"
+tlg-bootstrap = "shared.telegram.bootstrap:main"
 
 [build-system]
 requires = ["hatchling>=1.21"]
