@@ -36,10 +36,15 @@ async def with_telethon_retries(
 ) -> AsyncIterator[None]:
     """Wrap an awaitable block in exp-backoff retry on transient errors.
 
-    Only catches ``ConnectionError``, ``asyncio.TimeoutError``, ``OSError``.
+    Only catches ``ConnectionError``, ``TimeoutError`` (which on Py 3.11+ is
+    the same class as ``asyncio.TimeoutError``), and ``OSError``.
     ``FloodWaitError`` is intentionally NOT caught here — Telethon's own
     ``flood_sleep_threshold`` handles short waits, longer ones surface to
     the caller via :func:`handle_telegram_exception`.
+
+    Prefer :func:`retry_telethon` for coroutine callers — it retries the full
+    function call. This context manager retries the ``yield`` point itself but
+    cannot re-enter the body independently.
     """
 
     attempt = 0
@@ -180,7 +185,7 @@ async def handle_telegram_exception(
         logger.error(
             "admin_notify",
             source_id=str(source_id) if source_id else None,
-            reason="channel_private",
+            reason=type(exc).__name__,
             exc_type=type(exc).__name__,
         )
         return
