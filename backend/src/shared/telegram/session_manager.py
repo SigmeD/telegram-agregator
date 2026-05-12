@@ -108,7 +108,7 @@ class SessionManager:
             await self._save_session()
             await self._client.disconnect()
             self._client = None
-        _alive_flag["value"] = False
+        _mark_dead()
         logger.info("session_manager_disconnected")
 
     async def is_authorized(self) -> bool:
@@ -136,20 +136,35 @@ class SessionManager:
             self._session_path.chmod(0o600)
 
 
-_alive_flag: dict[str, bool] = {"value": False}
+# Cross-process liveness marker. Used by docker compose healthcheck which
+# imports this module in a SEPARATE process from the listener — module-level
+# state would not propagate. Path is tmpfs-friendly and scoped to container
+# lifecycle (wiped on container restart, which is the desired liveness model).
+_ALIVE_MARKER_PATH = Path("/tmp/tlg-listener.alive")
 
 
 def _mark_alive() -> None:
-    _alive_flag["value"] = True
+    """Touch the alive-marker file. Idempotent."""
+    try:
+        _ALIVE_MARKER_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _ALIVE_MARKER_PATH.touch()
+    except OSError as exc:
+        logger.warning("alive_marker_write_failed", path=str(_ALIVE_MARKER_PATH), exc=str(exc))
+
+
+def _mark_dead() -> None:
+    """Remove the alive-marker file. Idempotent (FileNotFoundError suppressed)."""
+    with contextlib.suppress(FileNotFoundError):
+        _ALIVE_MARKER_PATH.unlink()
 
 
 def session_alive() -> bool:
-    """Module-level liveness check used by docker healthcheck.
+    """Return True iff the alive-marker file exists.
 
-    Returns True between the first successful ``SessionManager.connect()``
-    and the next ``disconnect()`` in this process. Coarse-grained — does
-    not verify the underlying MTProto connection is still alive (real
-    Telethon ping is Phase 2). False before any connect, and after any
-    disconnect.
+    The marker is written by ``SessionManager.connect()`` and removed by
+    ``disconnect()``. Lives at ``/tmp/tlg-listener.alive`` so a separate
+    docker healthcheck process can observe it without sharing memory.
+
+    The path is module-level so tests can monkeypatch it to a temp location.
     """
-    return _alive_flag["value"]
+    return _ALIVE_MARKER_PATH.exists()

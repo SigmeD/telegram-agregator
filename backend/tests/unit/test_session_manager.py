@@ -15,11 +15,14 @@ from shared.telegram.session_manager import SessionManager
 
 
 @pytest.fixture(autouse=True)
-def reset_alive_flag(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ensure _alive_flag starts False for each test (module-level state)."""
+def reset_alive_marker(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Redirect alive-marker to a tmp path so tests are isolated and don't
+    create /tmp/tlg-listener.alive on the host filesystem."""
     from shared.telegram import session_manager
 
-    monkeypatch.setitem(session_manager._alive_flag, "value", False)
+    marker = tmp_path / "tlg-listener.alive"
+    monkeypatch.setattr(session_manager, "_ALIVE_MARKER_PATH", marker)
+    return marker
 
 
 @pytest.fixture
@@ -165,3 +168,42 @@ async def test_session_manager_writer_loop_saves_periodically(
         f"Expected at least one asyncio.sleep({SessionManager._WRITER_INTERVAL_SEC}); "
         f"got calls: {sleep_mock.call_args_list}"
     )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_session_alive_tracks_marker_file_across_connect_disconnect(
+    valid_session_blob: Path,
+    fernet_key: bytes,
+    reset_alive_marker: Path,
+) -> None:
+    """session_alive() is False before connect, True after connect, False after disconnect."""
+    from shared.telegram.session_manager import session_alive
+
+    assert session_alive() is False
+    assert not reset_alive_marker.exists()
+
+    mgr = SessionManager(
+        session_path=valid_session_blob,
+        session_key=fernet_key,
+        api_id=12345,
+        api_hash="dummy",
+    )
+
+    fake_client = AsyncMock()
+    fake_client.connect = AsyncMock()
+    fake_client.is_user_authorized = AsyncMock(return_value=True)
+    fake_client.session = MagicMock()
+    fake_client.session.save = MagicMock(return_value="updated_session_str")
+    fake_client.disconnect = AsyncMock()
+
+    with patch("shared.telegram.session_manager.TelegramClient", return_value=fake_client):
+        await mgr.connect()
+
+    assert session_alive() is True
+    assert reset_alive_marker.exists()
+
+    await mgr.disconnect()
+
+    assert session_alive() is False
+    assert not reset_alive_marker.exists()
