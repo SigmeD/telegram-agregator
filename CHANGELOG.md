@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Security
+- **2026-05-12** PR #55 (`a88d861`) разблокировал security CI project-wide (был красным с 2026-05-07). `next 15.5.15 → 15.5.18` — закрыты 7 HIGH GHSA от 2026-05-04: GHSA-8h8q-6873-q5fj (DoS Server Components, CVE-2026-23870), CVE-2026-44579 (DoS Cache Components), CVE-2026-44578 (SSRF via WebSocket upgrades), CVE-2026-45109 (Middleware/Proxy bypass Turbopack follow-up), CVE-2026-44575 (Middleware bypass segment-prefetch), CVE-2026-44574 (Middleware bypass dynamic-route param injection), CVE-2026-44573 (i18n Pages Router bypass). `urllib3 2.6.3 → 2.7.0` — CVE-2026-44432 (decomp-бомба в streaming API с Brotli/`drain_conn`), CVE-2026-44431 (sensitive headers forward across origins в `ProxyManager.connection_from_url`). `mako 1.3.11 → 1.3.12` — CVE-2026-44307 (Windows path-traversal в `TemplateLookup` через backslash URI; транзитив через alembic). `urllib3` + `mako` пин'ятся как explicit floor в `backend/pyproject.toml` (мы не импортируем их напрямую — security-only) с in-file комментарием на CVE.
+
+### Fixed
+- **2026-05-12** PR #54 (`560107f`) — CD dev-deploy: `LOG_LEVEL: debug → DEBUG` в `infra/compose/docker-compose.dev.yml` × 5 сервисов. `Settings.LOG_LEVEL: Literal["DEBUG","INFO","WARNING","ERROR","CRITICAL"]` ждёт UPPERCASE-enum; compose `environment:` имеет приоритет над `env_file:` (= `LOG_LEVEL=${LOG_LEVEL:-INFO}` из `deploy.sh write_backend_env()` никогда не доходил до контейнера). Root cause крашей `backend-worker` на pydantic-валидации в каждом deploy с 2026-04-29. Верифицировано: deploy run 25726662188 показал `backend-worker-1 Started` чисто.
+- **2026-05-12** PR #54 — откат debug-инструментации из PR #50 в `.github/workflows/cd-backend-dev.yml`: 7 `STEP_*` echo'ев, `bash -x` trace, `2>&1` stderr→stdout merge. Диагностическая цель выполнена (deploy.sh достиг `compose up`); дальнейшая видимость идёт от `docker compose ps/logs` на VPS.
+- **2026-05-12** PR #54 — удалён stale follow-up в CLAUDE.md «Не сделано» про `test_smoke[worker.*]`: `backend/tests/conftest.py:18-33` уже содержит `_TEST_ENV_DEFAULTS` через `os.environ.setdefault` для всех Settings-required vars (включая `JWT_SECRET`, `TELEGRAM_API_*`). Локально 20/20 модулей smoke зелёные.
+
+### Changed
+- **2026-05-12** Dependabot PR #36 (`next group → 16.2.4` MAJOR) закрыт вручную с комментарием-ссылкой на #55. Причина: бамп пересекался с решением 2026-04-27 «Next 15→16 преждевременно» (CLAUDE.md «Сделано»); плюс ломал `ci-frontend / lint` (`next lint` удалён в Next 16, миграция требует `next-lint-to-eslint-cli` codemod). Узкий security-patch на 15.x line (PR #55) — правильный путь.
+
 ### Added
 - **2026-04-30** `frontend/src/features/.gitkeep` — каталог-плейсхолдер из CLAUDE.md (`src/{app,components,features,lib,test}/`); фактическое наполнение появится с первой feature-сборкой (FEATURE-02 sources CRUD).
 - **2026-04-30** `docs/business_rules.md` — stub-redirect на корневой `BUSINESS_RULES.md`. Канонический источник остаётся в корне; файл в `docs/` нужен только для навигации (Windows-friendly, без symlink).
