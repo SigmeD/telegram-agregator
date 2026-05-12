@@ -14,6 +14,14 @@ from telethon.sessions import StringSession
 from shared.telegram.session_manager import SessionManager
 
 
+@pytest.fixture(autouse=True)
+def reset_alive_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure _alive_flag starts False for each test (module-level state)."""
+    from shared.telegram import session_manager
+
+    monkeypatch.setitem(session_manager._alive_flag, "value", False)
+
+
 @pytest.fixture
 def fernet_key() -> bytes:
     return Fernet.generate_key()
@@ -78,6 +86,36 @@ async def test_session_manager_connect_wrong_key_raises_invalid_token(
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_session_manager_connect_unauthorized_disconnects_client(
+    valid_session_blob: Path, fernet_key: bytes
+) -> None:
+    """is_user_authorized() == False → AuthKeyError + client.disconnect() called."""
+    from telethon.errors import AuthKeyError
+
+    mgr = SessionManager(
+        session_path=valid_session_blob,
+        session_key=fernet_key,
+        api_id=12345,
+        api_hash="dummy",
+    )
+
+    fake_client = AsyncMock()
+    fake_client.connect = AsyncMock()
+    fake_client.is_user_authorized = AsyncMock(return_value=False)
+    fake_client.disconnect = AsyncMock()
+
+    with (
+        patch("shared.telegram.session_manager.TelegramClient", return_value=fake_client),
+        pytest.raises(AuthKeyError),
+    ):
+        await mgr.connect()
+
+    fake_client.disconnect.assert_awaited_once()
+    assert mgr._client is None
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_session_manager_writer_loop_saves_periodically(
     valid_session_blob: Path, fernet_key: bytes, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -115,3 +153,15 @@ async def test_session_manager_writer_loop_saves_periodically(
         await task
 
     assert save_mock.await_count >= 1
+
+    # Verify the loop actually sleeps for the configured interval.
+    assert sleep_mock.await_count >= 1
+    sleep_calls_for_interval = [
+        c
+        for c in sleep_mock.call_args_list
+        if c.args and c.args[0] == SessionManager._WRITER_INTERVAL_SEC
+    ]
+    assert len(sleep_calls_for_interval) >= 1, (
+        f"Expected at least one asyncio.sleep({SessionManager._WRITER_INTERVAL_SEC}); "
+        f"got calls: {sleep_mock.call_args_list}"
+    )

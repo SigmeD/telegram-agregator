@@ -71,8 +71,16 @@ class SessionManager:
             request_retries=self._REQUEST_RETRIES,
         )
         await self._client.connect()
-        if not await self._client.is_user_authorized():
-            raise AuthKeyError(request=None, message="SESSION_NOT_AUTHORIZED")
+        try:
+            if not await self._client.is_user_authorized():
+                raise AuthKeyError(request=None, message="SESSION_REVOKED")
+        except BaseException:
+            # Auth check failed (or itself raised) — MTProto socket is open but
+            # session unusable. Close the socket and clear state so the caller
+            # can drop this manager cleanly without leaking the connection.
+            await self._client.disconnect()
+            self._client = None
+            raise
 
         self._writer_task = asyncio.create_task(self._writer_loop())
         _mark_alive()
@@ -80,7 +88,16 @@ class SessionManager:
         return self._client
 
     async def disconnect(self) -> None:
-        """Cancel writer task, save final state, close MTProto."""
+        """Cancel writer task, save final state, close MTProto.
+
+        Idempotent: safe to call before ``connect()`` (no-op) and after
+        a failed ``connect()`` (cleans up whichever of writer_task / client
+        was set).
+        """
+        # Two independent guards: connect() failure modes may leave one set
+        # without the other (e.g. AuthKeyError path now in connect() resets
+        # _client to None but never started _writer_task — both guards
+        # short-circuit cleanly).
         if self._writer_task is not None:
             self._writer_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -91,6 +108,7 @@ class SessionManager:
             await self._save_session()
             await self._client.disconnect()
             self._client = None
+        _alive_flag["value"] = False
         logger.info("session_manager_disconnected")
 
     async def is_authorized(self) -> bool:
@@ -128,7 +146,10 @@ def _mark_alive() -> None:
 def session_alive() -> bool:
     """Module-level liveness check used by docker healthcheck.
 
-    Returns True only if a SessionManager instance has connect'ed at least
-    once in this process. Real Telethon ping is Phase 2.
+    Returns True between the first successful ``SessionManager.connect()``
+    and the next ``disconnect()`` in this process. Coarse-grained — does
+    not verify the underlying MTProto connection is still alive (real
+    Telethon ping is Phase 2). False before any connect, and after any
+    disconnect.
     """
     return _alive_flag["value"]
