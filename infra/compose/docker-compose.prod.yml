@@ -77,10 +77,8 @@ services:
       ENV: prod
       LOG_LEVEL: ${LOG_LEVEL:-info}
       API_WORKERS: ${API_WORKERS:-2}
-    # API is exposed to nginx only, not publicly.
-    ports: []
-    expose:
-      - "8000"
+    # API is exposed to nginx only, not publicly. `expose: 8000` is
+    # inherited from base; no `ports:` override needed (base has none).
 
   backend-bot:
     <<: [*prod-image, *prod-restart, *prod-logging]

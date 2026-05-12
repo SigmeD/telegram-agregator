@@ -137,8 +137,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "${API_PORT:-8000}:8000"
+    # Host port binding lives in env-overrides ONLY (dev: 127.0.0.1:8000;
+    # prod: none, behind nginx). Compose merges `ports:` lists additively,
+    # so a base mapping + an override mapping would BOTH be bound — kernel
+    # rejects the second one as "address already in use" because the
+    # broader 0.0.0.0 mapping already covers 127.0.0.1. Inter-container
+    # access stays on the `tlg` network via DNS name `backend-api:8000`.
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
       interval: 15s
