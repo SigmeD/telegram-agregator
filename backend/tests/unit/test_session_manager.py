@@ -207,3 +207,36 @@ async def test_session_alive_tracks_marker_file_across_connect_disconnect(
 
     assert session_alive() is False
     assert not reset_alive_marker.exists()
+
+
+@pytest.mark.unit
+def test_mark_alive_idempotent(reset_alive_marker: Path) -> None:
+    """_mark_alive can be called twice without error; marker remains."""
+    from shared.telegram.session_manager import _mark_alive, session_alive
+
+    _mark_alive()
+    _mark_alive()  # second call must not raise
+    assert session_alive() is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_disconnect_before_connect_is_noop(
+    valid_session_blob: Path,
+    fernet_key: bytes,
+    reset_alive_marker: Path,
+) -> None:
+    """disconnect() before connect() leaves marker absent and emits no false log."""
+    from shared.telegram.session_manager import session_alive
+
+    mgr = SessionManager(
+        session_path=valid_session_blob,
+        session_key=fernet_key,
+        api_id=1,
+        api_hash="x",
+    )
+
+    # No connect() called. disconnect() must be safe and not write/touch the marker.
+    await mgr.disconnect()
+    assert session_alive() is False
+    assert not reset_alive_marker.exists()

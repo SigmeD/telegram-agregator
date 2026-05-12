@@ -94,6 +94,15 @@ class SessionManager:
         a failed ``connect()`` (cleans up whichever of writer_task / client
         was set).
         """
+        # Capture whether anything was ever brought to life. Guards both the
+        # disconnect log line and _mark_dead() from firing on a manager that
+        # never connected (e.g. disconnect() called defensively before
+        # connect(), or connect() raising InvalidToken before _mark_alive()).
+        # _mark_dead() itself is idempotent via FileNotFoundError suppression,
+        # but emitting "session_manager_disconnected" for a session that
+        # never lived is misleading in logs.
+        was_alive = self._writer_task is not None or self._client is not None
+
         # Two independent guards: connect() failure modes may leave one set
         # without the other (e.g. AuthKeyError path now in connect() resets
         # _client to None but never started _writer_task — both guards
@@ -108,8 +117,10 @@ class SessionManager:
             await self._save_session()
             await self._client.disconnect()
             self._client = None
-        _mark_dead()
-        logger.info("session_manager_disconnected")
+
+        if was_alive:
+            _mark_dead()
+            logger.info("session_manager_disconnected")
 
     async def is_authorized(self) -> bool:
         if self._client is None:
