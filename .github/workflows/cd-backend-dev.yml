@@ -97,24 +97,17 @@ jobs:
           envs: IMAGE_TAG,SKIP_MIGRATIONS,POSTGRES_PASSWORD,ANTHROPIC_API_KEY,OPENAI_API_KEY,TELEGRAM_API_ID,TELEGRAM_API_HASH,TELEGRAM_PHONE,NOTIFY_BOT_TOKEN,NOTIFY_BOT_ADMIN_CHAT_ID,JWT_SECRET,TELETHON_SESSION_KEY,SENTRY_DSN
           script: |
             set -e
-            echo "STEP_PRE: pwd=$(pwd) user=$(whoami)"
             cd /home/user1/telegram-aggregator
-            echo "STEP_CD: pwd=$(pwd) head=$(git rev-parse --short HEAD 2>/dev/null || echo none)"
             git fetch --depth 1 origin develop
-            echo "STEP_FETCH: ok"
             git checkout -f origin/develop
-            echo "STEP_CHECKOUT: head=$(git rev-parse --short HEAD)"
             export POSTGRES_PASSWORD ANTHROPIC_API_KEY OPENAI_API_KEY TELEGRAM_API_ID \
                    TELEGRAM_API_HASH TELEGRAM_PHONE NOTIFY_BOT_TOKEN NOTIFY_BOT_ADMIN_CHAT_ID \
                    JWT_SECRET TELETHON_SESSION_KEY SENTRY_DSN
-            echo "STEP_EXPORT: ok"
-            echo "STEP_DEPLOY_PRE: invoking deploy.sh with bash -x for trace"
             if [ "${SKIP_MIGRATIONS}" = "true" ]; then
-              bash -x infra/scripts/deploy.sh dev "${IMAGE_TAG}" --skip-migrations 2>&1
+              bash infra/scripts/deploy.sh dev "${IMAGE_TAG}" --skip-migrations
             else
-              bash -x infra/scripts/deploy.sh dev "${IMAGE_TAG}" 2>&1
+              bash infra/scripts/deploy.sh dev "${IMAGE_TAG}"
             fi
-            echo "STEP_DEPLOY_POST: ok"
         env:
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           SKIP_MIGRATIONS: ${{ inputs.skip_migrations || 'false' }}
