@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Fixed
+- **2026-07-20** PR #65 (`0734eca`, squash в `develop`) — **reconcile: listener не падает на одном мёртвом источнике.** `_reconcile_sources` узко ловит `ValueError` от `client.get_entity` (нерезолвящийся username — мёртвый/переименованный) → деактивирует именно этот источник (`is_active=false`) + `continue`, вместо проброса из `run()` и restart-loop'а. Узко к `ValueError` — прочие исключения по-прежнему идут через `handle_telegram_exception` (config-баги/дефекты остаются видимыми). 2 интеграционных теста (testcontainers PG): ValueError деактивирует + цикл продолжается; `RuntimeError` по-прежнему пробрасывается (guard против широкого except). 104 passed.
+
+### Changed
+- **2026-07-20** **Инфраструктура: dev VPS перенесён на FastVPS `5.188.20.39` (Ubuntu 26.04)** — [ADR-0010](docs/adr/0010-dev-vps-fastvps.md), заменяет ADR-0009. Frankfurt `95.81.94.83` стал недоступен после ~2 мес простоя. Fresh bring-up: `user1` (sudo+docker), Docker 29.6 (`get.docker.com`), репо в `/home/user1/telegram-aggregator`, SSH-хардненинг (только ключ — `PasswordAuthentication no`, `PermitRootLogin prohibit-password`; верифицировано `sshd -T`; drop-in побеждает `50-cloud-init.conf` через first-match-wins). GH Secrets синхронизированы (`DEV_VPS_HOST=5.188.20.39`, свежий Fernet `TELETHON_SESSION_KEY`) — прежний secret-drift закрыт.
+- **2026-07-20** PR #66 (`684e1fe`) — release-merge `develop → main`: reconcile-фикс + весь Sprint 1 (16 коммитов) в `main`. Прод сам не деплоится (`cd-backend-prod` ручной). **`main` = актуальный код, но не подтверждённый релиз** до разбора Trivy-долга + E2E-smoke. **Trivy-исключение принято** (PR не менял зависимости/lock/Docker base/security-конфиг → нет новых находок; baseline = целевая ветка).
+- **2026-07-20** dev-стек развёрнут на новом VPS (`cd-backend-dev`): pg/redis/api/worker/bot/listener — все healthy; Telethon-сессия забутстраплена под `+375291953533`, `session.enc` расшифровывается свежим ключом.
+
+### Security
+- **2026-07-20** **Исправление факта: 2FA (cloud password) на `+375291953533` ВКЛЮЧЁН** (отменяет заметку от 2026-05-12 «2FA выключен» в [security.md](docs/security.md)). Обнаружено при bootstrap на новом VPS — Telegram потребовал cloud password. Держим включённым; bootstrap интерактивен и требует ввода пароля. Код входа приходит **в Telegram-app** (чат 777000), не SMS.
+
 ### Added
 - **2026-05-12** PR #59 (`3a3468c`) — **FEATURE-03 Phase 1 + FEATURE-01 Phase 1**: Telethon listener + session bootstrap. 5 модулей: `shared/telegram/errors.py` (retry-декоратор + dispatcher FloodWait/ChannelPrivate/AuthKey), `shared/telegram/session_manager.py` (Fernet-encrypted StringSession lifecycle, periodic re-save, tmpfs alive-marker для cross-process healthcheck), `shared/telegram/bootstrap.py` (interactive CLI для one-shot session-генерации на VPS — SMS + 2FA), `listener/processing.py` (NewMessage → RawMessage row → Celery enqueue), `listener/main.py` (SessionManager → reconcile → handler → graceful SIGTERM/SIGINT). Infra: новый `bootstrap` profile-gated service в compose, healthcheck listener'а через `session_alive()` (tmpfs marker), `/tmp` как tmpfs. 102 теста зелёные локально (`shared/telegram/` 88% coverage, `listener/processing.py` 100%). Phase 2 отложено: account rotation 2-3, Prometheus metrics, Telethon-ping healthcheck (вместо file-marker proxy), log rotation 100MB, auto-join, reaper orphan-pending, startup backfill, full coverage `listener/main.py::run()`.
 
