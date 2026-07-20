@@ -10,6 +10,7 @@
 | [`redis-down.md`](./redis-down.md) | Redis недоступен, Celery worker'ы падают/пустые, очередь не опустошается, listener получает ошибки при публикации задач. |
 | [`llm-cost-spike.md`](./llm-cost-spike.md) | Расходы на Anthropic/OpenAI API превышают дневной/недельный лимит; растёт `cost_usd` в `lead_analysis` за окно времени; алерт `LLM_DAILY_BUDGET_USD` в Sentry. |
 | [`db-restore.md`](./db-restore.md) | Требуется восстановить Postgres из бэкапа после потери данных, повреждения, неудачной миграции или для проверки RPO/RTO. |
+| [`wireguard-split-tunnel.md`](./wireguard-split-tunnel.md) | VPS листенера в локации с блокировкой `api.telegram.org` — поднять split-tunnel к exit-ноде в нейтральной локации. Также как backup при бане текущего исходящего IP. На 2026-05-12 не активирован: dev VPS в Frankfurt (ADR-0009). |
 
 ## Общие принципы реагирования
 

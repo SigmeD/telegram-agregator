@@ -55,12 +55,17 @@ case "$MODE" in
   migrate)
     exec alembic -c migrations/alembic.ini upgrade head
     ;;
+  bootstrap)
+    # Interactive Telethon session bootstrap — writes Fernet-encrypted
+    # .session.enc on the session-data volume. TTY required for SMS code.
+    exec python -m shared.telegram.bootstrap "$@"
+    ;;
   shell)
     exec /bin/bash "$@"
     ;;
   *)
     echo "[entrypoint] unknown mode: $MODE" >&2
-    echo "Valid modes: listener | worker | beat | api | bot | migrate | shell" >&2
+    echo "Valid modes: listener | worker | beat | api | bot | migrate | bootstrap | shell" >&2
     exit 64
     ;;
 esac

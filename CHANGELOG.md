@@ -5,6 +5,29 @@
 ## [Unreleased]
 
 ### Added
+- **2026-05-12** PR #59 (`3a3468c`) — **FEATURE-03 Phase 1 + FEATURE-01 Phase 1**: Telethon listener + session bootstrap. 5 модулей: `shared/telegram/errors.py` (retry-декоратор + dispatcher FloodWait/ChannelPrivate/AuthKey), `shared/telegram/session_manager.py` (Fernet-encrypted StringSession lifecycle, periodic re-save, tmpfs alive-marker для cross-process healthcheck), `shared/telegram/bootstrap.py` (interactive CLI для one-shot session-генерации на VPS — SMS + 2FA), `listener/processing.py` (NewMessage → RawMessage row → Celery enqueue), `listener/main.py` (SessionManager → reconcile → handler → graceful SIGTERM/SIGINT). Infra: новый `bootstrap` profile-gated service в compose, healthcheck listener'а через `session_alive()` (tmpfs marker), `/tmp` как tmpfs. 102 теста зелёные локально (`shared/telegram/` 88% coverage, `listener/processing.py` 100%). Phase 2 отложено: account rotation 2-3, Prometheus metrics, Telethon-ping healthcheck (вместо file-marker proxy), log rotation 100MB, auto-join, reaper orphan-pending, startup backfill, full coverage `listener/main.py::run()`.
+
+### Fixed
+- **2026-05-12** PR #58 (`0254b56`) — **CD dev-deploy: реальный fix port-bind race на `127.0.0.1:8000`**. Симптом — 3 деплоя подряд падали с `failed to set up container networking ... address already in use` после merge PR #57. Диагностика — `docker compose -f docker-compose.yml -f docker-compose.dev.yml config` показал, что merged-конфиг содержит **две** записи `ports:` на `backend-api`: одна с base (`8000:8000` = `0.0.0.0:8000`), вторая с dev override (`127.0.0.1:8000:8000`). Kernel биндит `0.0.0.0:8000` (purviews loopback), вторая запись `127.0.0.1:8000` фейлится с EADDRINUSE. **Решение**: убрали `ports:` из base `docker-compose.yml`, оставили `expose: 8000` для in-network DNS (worker/bot/nginx → `backend-api:8000`); dev override остался единственным источником host-mapping (`127.0.0.1:8000:8000`); из prod override удалён workaround `ports: []` (был попыткой того же автора закрыть проблему). Верифицировано локально: dev merged config — одна запись с `host_ip: 127.0.0.1`, prod merged — `expose` only.
+- **2026-05-12** PR #57 (`3053b45`) — pre-remove `backend-api` перед `up -d` в `infra/scripts/deploy.sh`: `${COMPOSE[@]} rm -fs backend-api 2>/dev/null || true`. Целился в port-bind race, но не дошёл до root cause — оказался необходимым, но не достаточным (см. PR #58). Оставлен в `deploy.sh` как защита от orphan-контейнеров; ~1s downtime на API при каждом dev-deploy, для prod потребуется blue-green.
+
+### Docs
+- **2026-05-12** PR #56 (`0f7424a`) — post-deploy status sweep: зафиксированы итоги мерджа PR #54 + #55 в CLAUDE.md «Текущий статус» и `CHANGELOG.md [Unreleased]`. Закрытый цикл «merge → docs» в одну сессию (правило 11 CLAUDE.md).
+
+### Security
+- **2026-05-12** PR #55 (`a88d861`) разблокировал security CI project-wide (был красным с 2026-05-07). `next 15.5.15 → 15.5.18` — закрыты 7 HIGH GHSA от 2026-05-04: GHSA-8h8q-6873-q5fj (DoS Server Components, CVE-2026-23870), CVE-2026-44579 (DoS Cache Components), CVE-2026-44578 (SSRF via WebSocket upgrades), CVE-2026-45109 (Middleware/Proxy bypass Turbopack follow-up), CVE-2026-44575 (Middleware bypass segment-prefetch), CVE-2026-44574 (Middleware bypass dynamic-route param injection), CVE-2026-44573 (i18n Pages Router bypass). `urllib3 2.6.3 → 2.7.0` — CVE-2026-44432 (decomp-бомба в streaming API с Brotli/`drain_conn`), CVE-2026-44431 (sensitive headers forward across origins в `ProxyManager.connection_from_url`). `mako 1.3.11 → 1.3.12` — CVE-2026-44307 (Windows path-traversal в `TemplateLookup` через backslash URI; транзитив через alembic). `urllib3` + `mako` пин'ятся как explicit floor в `backend/pyproject.toml` (мы не импортируем их напрямую — security-only) с in-file комментарием на CVE.
+
+### Fixed
+- **2026-05-12** PR #54 (`560107f`) — CD dev-deploy: `LOG_LEVEL: debug → DEBUG` в `infra/compose/docker-compose.dev.yml` × 5 сервисов. `Settings.LOG_LEVEL: Literal["DEBUG","INFO","WARNING","ERROR","CRITICAL"]` ждёт UPPERCASE-enum; compose `environment:` имеет приоритет над `env_file:` (= `LOG_LEVEL=${LOG_LEVEL:-INFO}` из `deploy.sh write_backend_env()` никогда не доходил до контейнера). Root cause крашей `backend-worker` на pydantic-валидации в каждом deploy с 2026-04-29. Верифицировано: deploy run 25726662188 показал `backend-worker-1 Started` чисто.
+- **2026-05-12** PR #54 — откат debug-инструментации из PR #50 в `.github/workflows/cd-backend-dev.yml`: 7 `STEP_*` echo'ев, `bash -x` trace, `2>&1` stderr→stdout merge. Диагностическая цель выполнена (deploy.sh достиг `compose up`); дальнейшая видимость идёт от `docker compose ps/logs` на VPS.
+- **2026-05-12** PR #54 — удалён stale follow-up в CLAUDE.md «Не сделано» про `test_smoke[worker.*]`: `backend/tests/conftest.py:18-33` уже содержит `_TEST_ENV_DEFAULTS` через `os.environ.setdefault` для всех Settings-required vars (включая `JWT_SECRET`, `TELEGRAM_API_*`). Локально 20/20 модулей smoke зелёные.
+
+### Changed
+- **2026-05-12** Dependabot PR #36 (`next group → 16.2.4` MAJOR) закрыт вручную с комментарием-ссылкой на #55. Причина: бамп пересекался с решением 2026-04-27 «Next 15→16 преждевременно» (CLAUDE.md «Сделано»); плюс ломал `ci-frontend / lint` (`next lint` удалён в Next 16, миграция требует `next-lint-to-eslint-cli` codemod). Узкий security-patch на 15.x line (PR #55) — правильный путь.
+
+### Added
+- **2026-04-30** `frontend/src/features/.gitkeep` — каталог-плейсхолдер из CLAUDE.md (`src/{app,components,features,lib,test}/`); фактическое наполнение появится с первой feature-сборкой (FEATURE-02 sources CRUD).
+- **2026-04-30** `docs/business_rules.md` — stub-redirect на корневой `BUSINESS_RULES.md`. Канонический источник остаётся в корне; файл в `docs/` нужен только для навигации (Windows-friendly, без symlink).
 - **2026-04-27** Seed loader (`shared.db.seed`, `make seed`) + миграция `0002_chat_id_nullable`. Loader идемпотентен: источники upsert'ятся по `lower(username)` (`chat_id` остаётся NULL до резолва listener'ом), триггеры — `INSERT … ON CONFLICT (keyword, language) DO UPDATE`. Engine читает `DATABASE_URL` из `os.environ` напрямую (тот же decoupling-паттерн, что в `migrations/env.py` — без `Settings`/secrets). Стартовый набор в YAML: 32 источника (founders/vc/accel/regional) + 33 триггера (direct_request/pain_signal/lifecycle_event/negative).
 - **2026-04-27** Миграция `0002`: `telegram_sources.chat_id` → `nullable=True`; `UNIQUE` constraint заменён на partial unique index `uq_telegram_sources_chat_id WHERE chat_id IS NOT NULL`. Семантика: «pending source» сидится без chat_id, listener (FEATURE-03) backfill'ит при первом подключении. Downgrade fail-fast: если в БД остались строки с `chat_id IS NULL`, downgrade поднимает RuntimeError вместо падения посередине.
 - **2026-04-27** 14 интеграционных тестов в `test_seed.py` против Postgres 15 (testcontainers): nullable chat_id (multiple NULLs OK, partial unique enforces non-null uniqueness, indexdef содержит WHERE-clause), `seed_sources` (insert/idempotent/update/case-insensitive username/reject-no-username/reject-bad-priority), `seed_triggers` (insert/idempotent/update/distinct-languages/reject-bad-type), real-YAML smoke (≥30 источников, ≥25 триггеров).
@@ -20,22 +43,29 @@
 - CI/CD workflow'ы: `ci-backend`, `ci-frontend`, `ci-docs`, `security`, `cd-backend-dev`, `cd-backend-prod` (manual), `release`.
 - Makefile, `.pre-commit-config.yaml`, `.editorconfig`, CONTRIBUTING, SECURITY, LICENSE.
 
-### Security
-- Gitleaks настроен в pre-commit и в `security.yml` CI.
-- Session-файл Telethon шифруется AES-256, ключ — только в env на VPS.
-
 ### Changed
+- **2026-04-30** CLAUDE.md переработан под универсальный шаблон v3 (242 → 378 строк): 6 общих правил → 15 жёстких правил с конкретными именами скилов / агентов / MCP; добавлены workflow-pipeline (15 шагов: эпик → brainstorm → plan → TDD → review → verify → deploy → finish), реестр инструментов (20 скилов / 9 subagent'ов / 4 MCP / hooks / memory system с путём `~/.claude/projects/D--Projects-telegram-agregator/memory/`), раздел «Контакты», структурированная таблица «State не в git». Сохранены все project-specific блоки (архитектура, стек, репо-структура, среды, VPS-gotchas, Текущий статус с историей PR #20-50).
+- **2026-04-30** Диаграмма репо в CLAUDE.md дополнена: `frontend/src/{app,components,features,lib,test}/` (был `{app,components,features,lib}` — отсутствовал `test/` для vitest setup).
 - **2026-04-24** GitHub remote подключён: https://github.com/SigmeD/telegram-agregator. Запушены ветки `main` и `develop` (initial commit rebased на auto-сгенерированный remote-commit, наш README сохранён).
 - **2026-04-24** Superpowers plugin установлен через `/plugin install superpowers@claude-plugins-official` — добавляет 14 skills (brainstorming, writing-plans, executing-plans, tdd, verification-before-completion и др.) и 6 subagent'ов для параллельной работы.
 - **2026-04-24** GitHub Environment `production` защищён Required reviewers — `cd-backend-prod.yml` не сработает без ручного одобрения Максима. Правило «prod deploy только по разрешению» закрыто на уровне платформы.
 - `.gitattributes` добавлен — LF enforcement для shell-скриптов, критично для Linux VPS.
 
+### Removed
+- **2026-04-30** `backend/migrations/versions/.gitkeep` и `backend/tests/integration/.gitkeep` — устаревшие плейсхолдеры. В `versions/` лежат миграции `0001_initial`, `0002_chat_id_nullable`; в `tests/integration/` — `test_migration_0001`, `test_migration_roundtrip`, `test_seed`. `frontend/src/components/ui/.gitkeep` оставлен до первой `npx shadcn add` команды.
+
 ### Fixed
+- **2026-04-29** CD: `cd-backend-dev` deploy указывал на несуществующую `/opt/tlg`. Реальный git-checkout на VPS — `/home/user1/telegram-aggregator/` (склонирован вручную в эту сессию: дир была пустая после compose-смоук-уборки 2026-04-26). Поправили `cd /opt/tlg` → `cd /home/user1/telegram-aggregator` в `cd-backend-{dev,prod}.yml`. Прод-workflow получает тот же фикс на упреждение, хотя prod-VPS пока не настроен.
+- **2026-04-29** CD: `cd-backend-dev` deploy на VPS падал с `sh: 12: set: Illegal option -o pipefail`. `appleboy/ssh-action` пробрасывает скрипт через VPS `/bin/sh` (dash на Ubuntu 22.04), а `set -Eeuo pipefail` — bash-only. Раньше не проявлялось, т.к. build стопорил пайплайн раньше deploy. Заменили на `set -eu` (POSIX-совместимо) в `cd-backend-{dev,prod}.yml`. `script_stop: true` у самого action'а уже даёт fail-fast для script-level ошибок, поэтому `pipefail` для деплой-скрипта без пайпов некритичен.
 - **2026-04-29** CI: `cd-backend-dev` / `cd-backend-prod` падали с `invalid tag "ghcr.io/SigmeD/tlg-aggregator:...": repository name must be lowercase`. `${{ github.repository_owner }}` подставляет owner как есть (`SigmeD`), Docker registry spec требует lowercase. Захардкодили `IMAGE_NAME: sigmed/tlg-aggregator`.
 - **2026-04-29** CI: `ci-backend` integration/unit/lint падали на `astral-sh/setup-uv@v3` с `No version found for 0.5.x` — uv давно ушёл на 0.7.x, старые `0.5.x` теги в action-релизах больше не резолвятся. Сняли `version: "0.5.x"` pin (default = latest stable).
 - **2026-04-24** Vercel build fail `pnpm install --frozen-lockfile exit 1` (headless install без lockfile). Причина: workspace lockfile лежал на уровень выше Root Directory `frontend/` и Vercel его не видел. Решение — отложили pnpm workspace до появления shared-пакетов (ADR-0007), lockfile перенесён в `frontend/pnpm-lock.yaml`.
 - **2026-04-24** Vercel build fail на `globals.css` (Next.js webpack error). Причина: postcss.config.mjs использовал `@tailwindcss/postcss`, но этот пакет не был в package.json (Tailwind 4 выпустил PostCSS-плагин отдельно). Решение — добавлены `@tailwindcss/postcss` и `postcss` в devDependencies.
 - **2026-04-24** Vercel git-triggered deploys падали с 0ms error. Две причины: (1) dashboard-стэйт проекта хранил старый ignoreCommand `git diff ... ../pnpm-lock.yaml`, невалидный после переноса lockfile; vercel.json обновляет только CLI-deploys, не git-webhooks. (2) Project rootDirectory был null → Vercel клонил в корень репо и команда билда не находила frontend/. Решение — через Vercel REST API: обнулён commandForIgnoringBuildStep, установлен rootDirectory=frontend.
+
+### Security
+- Gitleaks настроен в pre-commit и в `security.yml` CI.
+- Session-файл Telethon шифруется AES-256, ключ — только в env на VPS.
 
 ### Added
 - **2026-04-24** Первый успешный Vercel preview-деплой: https://telegram-agregator-ezxlixyl4-maxeroxinllm-5214s-projects.vercel.app (target=preview, Ready, 47s build). Требует авторизации через Vercel SSO (Deployment Protection включён — это ОК для внутренней dev-площадки).
