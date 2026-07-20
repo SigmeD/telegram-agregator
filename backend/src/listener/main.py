@@ -78,6 +78,29 @@ async def _reconcile_sources(
                 continue
             try:
                 entity = await client.get_entity(src.username)
+            except ValueError as exc:
+                # Telethon raises a bare ``ValueError`` when it cannot resolve a
+                # username (dead / renamed / never existed). Deactivate just this
+                # source so one dead seed cannot crash the whole listener, then
+                # carry on. Kept narrow to ``ValueError`` on purpose: broader
+                # errors fall through to the dispatcher below so config bugs and
+                # programming defects stay visible instead of masquerading as an
+                # "unresolvable source".
+                async with sessionmaker() as s:
+                    await s.execute(
+                        update(TelegramSource)
+                        .where(TelegramSource.id == src.id)
+                        .values(is_active=False)
+                    )
+                    await s.commit()
+                logger.warning(
+                    "telegram_source_resolution_failed",
+                    source_id=str(src.id),
+                    username=src.username,
+                    error_type=type(exc).__name__,
+                )
+                await asyncio.sleep(0.3)
+                continue
             except Exception as exc:
                 # TODO(Phase 2): FloodWait sleep happens inside this async-with block,
                 # holding a DB connection for up to ~66s. Acceptable for Phase 1
