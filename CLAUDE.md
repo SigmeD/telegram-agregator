@@ -167,7 +167,7 @@ make seed            # backend/src/shared/db/seed.py (32 источника + 33
 | Среда | Frontend | Backend | Data | Триггер деплоя |
 |---|---|---|---|---|
 | local | `pnpm dev` | `docker compose up` | локальные контейнеры | вручную |
-| dev | Vercel preview (`develop`) | VPS dev (`user1@95.81.94.83`, Frankfurt FirstByte; см. [ADR-0009](./docs/adr/0009-dev-vps-frankfurt.md)) | postgres:16-alpine + redis:7-alpine на VPS | auto по push в `develop` |
+| dev | Vercel preview (`develop`) | VPS dev (`user1@5.188.20.39`, FastVPS Ubuntu 26.04; см. [ADR-0010](./docs/adr/0010-dev-vps-fastvps.md)) | postgres:16-alpine + redis:7-alpine на VPS | auto по push в `develop` |
 | prod | Vercel production (`main`) | VPS prod | managed PG + Redis на VPS | **только** `workflow_dispatch` **после подтверждения Максима** |
 
 Push в `main` для frontend заблокирован через `git.deploymentEnabled.main=false` (Vercel REST API). GitHub environment `production` — Required reviewers.
@@ -312,36 +312,24 @@ Auto-memory: `C:\Users\Max\.claude\projects\D--Projects-telegram-agregator\memor
 
 ## Текущий статус (2026-07-20)
 
-Репозиторий: https://github.com/SigmeD/telegram-agregator · Vercel: `maxeroxinllm-5214s-projects/telegram-agregator` · preview `telegram-agregator-fjog3lpr8-…vercel.app`. `HEAD` = `ce9e27b` (develop, синхрон с origin).
+Репозиторий: https://github.com/SigmeD/telegram-agregator · Vercel: `maxeroxinllm-5214s-projects/telegram-agregator`. `develop` и `main` синхронны, `HEAD develop` = `0734eca`.
 
 > **Полная пофичевая история (PR #20–#59, commit-хэши, root-cause разборы) — в [`CHANGELOG.md`](./CHANGELOG.md) `[Unreleased]`.** Здесь — только компактный snapshot. Форензику сюда не накапливать (CLAUDE.md always-loaded, лимит ~35k).
 
-**⏸ Простой с 2026-05-12 evening (~2.5 мес): 0 коммитов, 0 merge.** Состояние ровно как на момент post-smoke sweep `ce9e27b`. Блокеры Sprint 1 ниже — все открыты.
+**2026-07-20 — dev-среда пересобрана на новом VPS, стек живой:**
+- [x] **Dev VPS `user1@5.188.20.39`** (FastVPS, Ubuntu 26.04, 1 vCPU/2GB; [ADR-0010](./docs/adr/0010-dev-vps-fastvps.md)) — Frankfurt `95.81.94.83` стал недоступен после простоя (SSH timeout), заменён. Fresh bring-up: `user1` (sudo+docker), Docker 29.6 (get.docker.com), deploy-ключ `telegram_agregator_deploy_ed25519`, репо в `/home/user1/telegram-aggregator`. SSH захардненен — только ключ (`PasswordAuthentication no`, `PermitRootLogin prohibit-password`).
+- [x] **GH Secrets синхронизированы:** `DEV_VPS_HOST=5.188.20.39`, свежий `TELETHON_SESSION_KEY` (Fernet). Прежний secret-drift закрыт.
+- [x] **reconcile-фикс (#65) в `develop`+`main`:** `_reconcile_sources` узко ловит `ValueError` (мёртвый username → `is_active=false` + continue) — один мёртвый seed больше не валит listener. 104 теста. `develop → main` (#66) смержен; **Trivy-исключение** зафиксировано в PR (см. «Осталось»).
+- [x] **Стек развёрнут (`cd-backend-dev`), listener healthy:** pg/redis/api/worker/bot/listener — все healthy; сессия забутстраплена под `+375291953533` (**2FA включён** — вводится cloud-пароль, см. [security.md](./docs/security.md)), `session.enc` расшифровывается новым ключом.
+- [x] Ранее (детали — CHANGELOG): монорепо, 7 CI/CD, 9 ADR, DB-фундамент (миграции 0001+0002, seed-loader), Vercel (main заблокирован, env `production` под reviewers), Security CI (PR #55), FEATURE-03/01 Phase 1 (PR #59).
 
-**Фундамент готов (детали — CHANGELOG):**
-- [x] Монорепо, 7 CI/CD workflows, SDLC-артефакты (9 ADR, 4 runbook, DoD/DoR, OpenAPI 3.1), `BUSINESS_RULES.md` (BR-001…110).
-- [x] Vercel: `develop`→auto preview, push в `main` заблокирован; GitHub env `production` под Required reviewers.
-- [x] **DB-фундамент:** 5 моделей, миграции `0001`+`0002` (`chat_id` nullable + partial unique), seed-loader (`make seed`, идемпотент), 49 интеграционных тестов против PG15 (testcontainers). ADR-0008 conventions.
-- [x] **Dev VPS (Frankfurt) `user1@95.81.94.83`** — ADR-0009, прямой доступ к Telegram без WG. Старый `87.242.87.8` (РФ) deprecated. Deploy-ключ `telegram_agregator_deploy_ed25519`, `cd-backend-dev` доходит до `compose up` (pg/redis/migrate healthy).
-- [x] **Security CI зелёный** (PR #55): `next 15.5.18`, `urllib3 2.7.0`, `mako 1.3.12` — закрыта GHSA-волна 2026-05-04. Next 16 major отложен.
-- [x] **FEATURE-03/01 Phase 1** (PR #59): Telethon listener + Fernet-session bootstrap. 5 модулей в `shared/telegram/` + `listener/`. 102 теста локально. Manual smoke на VPS прошёл — listener Up healthy, session.enc под `+375291953533`.
-
-**🔥 Блокеры Sprint 1 (открыты, требуют действия до следующего merge):**
-- [ ] **Secret drift GH ↔ VPS** (см. memory [[project_telethon_key_drift]]). Два рассинхрона: (1) `TELETHON_SESSION_KEY` — валидный Fernet сгенерён на VPS вручную, GH Secret хранит старый placeholder; (2) `DEV_VPS_HOST`/`USER` в GH Secret → старый `87.242.87.8`, реальный deploy на `95.81.94.83`. Следующий push в `develop` → `write_backend_env()` перезатрёт ключ → `session.enc` станет нерасшифровываемым (`InvalidToken`) → listener в restart-loop. **Фикс до merge:**
-  ```powershell
-  $key = ssh -i "$env:USERPROFILE\.ssh\telegram_agregator_deploy_ed25519" user1@95.81.94.83 'grep ^TELETHON_SESSION_KEY ~/telegram-aggregator/infra/env/backend.env | cut -d= -f2-'
-  gh secret set TELETHON_SESSION_KEY -b "$key" -R SigmeD/telegram-agregator
-  gh secret set DEV_VPS_HOST -b "95.81.94.83" -R SigmeD/telegram-agregator   # DEV_VPS_USER=user1 не меняется
-  ```
-- [ ] **reconcile-баг** (memory [[project_reconcile_valueerror]]): `listener/_reconcile_sources` не ловит `ValueError` из `client.get_entity` (мёртвый username) → один мёртвый seed валит весь listener в restart-loop. Воспроизводится на seed `russianstartups`. Обход — все 32 seed-источника деактивированы вручную. Fix: глотать `ValueError` как `ChannelPrivateError` → `is_active=false`.
-
-**Не сделано (Sprint 1 backlog):**
-- [ ] **E2E-smoke (последний шаг):** тестовый канал с `@tlgleadagg_notify_bot` (id `8559294134`, memory [[reference_notify_bot]]) админом → INSERT в `telegram_sources` → отправить `sendMessage` через Bot API → проверить строку в `raw_messages` за <5с.
+**Осталось до production-ready (`main` = актуальный код, но НЕ подтверждённый релиз):**
+- [ ] **🔴 Trivy / уязвимые зависимости** — HIGH/CRITICAL в депах (GHSA-волна за простой); при merge #66 принято **DoD-исключение** (код чист, зависимости PR не менял, baseline тот же). Отдельный трек: разобрать **13 отложенных Dependabot PR** (5× GHA, 4× frontend вкл. ломающий zod 3→4, 3× backend pip, 1× docker base — #51/#30/#28 закрыты как мажоры).
+- [ ] **⏳ E2E-smoke:** тест-канал с `@tlgleadagg_notify_bot` (id `8559294134`, memory [[reference_notify_bot]]) админом → INSERT в `telegram_sources` → `sendMessage` через Bot API → строка в `raw_messages` <5с. Reconcile-фикс уже на боксе, мёртвые seed'ы listener не валят.
 - [ ] **Seed-loader не в `deploy.sh`:** добавить `docker compose exec -T backend-api python -m shared.db.seed` после `alembic upgrade head` (иначе чистый deploy → пустой `telegram_sources`).
-- [ ] **`backend/seeds/keyword_triggers.yaml` — фактически 28 триггеров, не 33** (расхождение с историческим счётчиком). Сверить с ТЗ: обновить доку или дополнить YAML.
+- [ ] **`backend/seeds/keyword_triggers.yaml` — фактически 28 триггеров, не 33.** Сверить с ТЗ.
 - [ ] Реализация: FEATURE-01 Phase 2 (account rotation), FEATURE-02 (sources CRUD UI), FEATURE-04 (keyword filter).
-- [ ] **15 открытых Dependabot PR** (на 2026-05-12): 5× GHA, 4× frontend (вкл. zod 3→4, testing group), 5× backend pip, 1× docker base. Решений нет.
-- [ ] Cleanup: 3 stale «Active Sessions» `tlg-aggregator-bootstrap` в аккаунте `+375291953533` — terminate кроме свежей.
+- [ ] **На VPS:** сменить root-пароль (SSH-вектор закрыт, но нужен для консоли провайдера — только вручную Максимом); terminate 3 stale bootstrap-сессии в аккаунте `+375291953533`.
 
 **Открытые вопросы (требуют решения Максима):**
 - Prod vs dev VPS — один сервер с разными compose-проектами (через `docker-multitenancy`) или два?
@@ -357,7 +345,7 @@ Auto-memory: `C:\Users\Max\.claude\projects\D--Projects-telegram-agregator\memor
 - **GitHub org:** `SigmeD` · репо `SigmeD/telegram-agregator`
 - **Vercel team:** `maxeroxinllm-5214s-projects` · проект `telegram-agregator`
 - **Demo URL (preview):** `telegram-agregator-fjog3lpr8-maxeroxinllm-5214s-projects.vercel.app`
-- **Dev VPS:** `user1@95.81.94.83` (Frankfurt FirstByte, hostname `vpn`; см. [ADR-0009](./docs/adr/0009-dev-vps-frankfurt.md)). Старый `user1@87.242.87.8` deprecated 2026-05-12.
+- **Dev VPS:** `user1@5.188.20.39` (FastVPS, Ubuntu 26.04, hostname `sc5861fb8.fastvps-server.com`; см. [ADR-0010](./docs/adr/0010-dev-vps-fastvps.md)). Deprecated: `95.81.94.83` (Frankfurt, 2026-07-20), `87.242.87.8` (РФ, 2026-05-12).
 
 ## Ссылки внутрь
 
