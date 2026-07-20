@@ -310,9 +310,9 @@ Auto-memory: `C:\Users\Max\.claude\projects\D--Projects-telegram-agregator\memor
 
 Не сохранять: file paths, git history, debug recipes, code patterns (выводимо из репо).
 
-## Текущий статус (2026-07-20)
+## Текущий статус (2026-07-21)
 
-Репозиторий: https://github.com/SigmeD/telegram-agregator · Vercel: `maxeroxinllm-5214s-projects/telegram-agregator`. `develop` и `main` синхронны, `HEAD develop` = `0734eca`.
+Репозиторий: https://github.com/SigmeD/telegram-agregator · Vercel: `maxeroxinllm-5214s-projects/telegram-agregator`. `HEAD develop` = `595dc1d`; `main` = `50e9b13` (отстаёт на 1 коммит — #70, buildx-фикс в dev-workflow, prod не затронут).
 
 > **Полная пофичевая история (PR #20–#59, commit-хэши, root-cause разборы) — в [`CHANGELOG.md`](./CHANGELOG.md) `[Unreleased]`.** Здесь — только компактный snapshot. Форензику сюда не накапливать (CLAUDE.md always-loaded, лимит ~35k).
 
@@ -323,8 +323,12 @@ Auto-memory: `C:\Users\Max\.claude\projects\D--Projects-telegram-agregator\memor
 - [x] **Стек развёрнут (`cd-backend-dev`), listener healthy:** pg/redis/api/worker/bot/listener — все healthy; сессия забутстраплена под `+375291953533` (**2FA включён** — вводится cloud-пароль, см. [security.md](./docs/security.md)), `session.enc` расшифровывается новым ключом.
 - [x] Ранее (детали — CHANGELOG): монорепо, 7 CI/CD, 9 ADR, DB-фундамент (миграции 0001+0002, seed-loader), Vercel (main заблокирован, env `production` под reviewers), Security CI (PR #55), FEATURE-03/01 Phase 1 (PR #59).
 
+**2026-07-21 — dependency-backlog очищен, Trivy-долг закрыт:**
+- [x] **13 отложенных Dependabot PR → 0** (детали — CHANGELOG). 12 смёржено (react group, react-hook-form, lucide-react, zod 4, cryptography, structlog, pytest-asyncio, mypy, pytest, 3× docker-actions); testing-группа (#37→#68) — **миграция vitest 2→4 + jsdom 25→29 + jest-dom 6→7**, root cause: vitest 4 требует `vite ^6/7/8`, бамп оставил транзитивный vite@5 → пин `vite@^7`.
+- [x] **🟢 Trivy HIGH-долг закрыт (#69):** pyjwt→2.13.0, cryptography→48.0.1, starlette→1.3.1 (транзитив через fastapi 0.136.1). `trivy (filesystem)` зелёный на develop. `next` уже 15.5.18.
+- [x] **buildx-регрессия (#70):** #31 (buildx v3→v4) был откачен последующими same-file merge'ами #29/#27 при 3-way merge — восстановлен. Урок: при batch-merge Dependabot-PR в один файл проверять **итоговый контент**, а не per-PR статус «merged».
+
 **Осталось до production-ready (`main` = актуальный код, но НЕ подтверждённый релиз):**
-- [ ] **🔴 Trivy / уязвимые зависимости** — HIGH/CRITICAL в депах (GHSA-волна за простой); при merge #66 принято **DoD-исключение** (код чист, зависимости PR не менял, baseline тот же). Отдельный трек: разобрать **13 отложенных Dependabot PR** (5× GHA, 4× frontend вкл. ломающий zod 3→4, 3× backend pip, 1× docker base — #51/#30/#28 закрыты как мажоры).
 - [ ] **⏳ E2E-smoke:** тест-канал с `@tlgleadagg_notify_bot` (id `8559294134`, memory [[reference_notify_bot]]) админом → INSERT в `telegram_sources` → `sendMessage` через Bot API → строка в `raw_messages` <5с. Reconcile-фикс уже на боксе, мёртвые seed'ы listener не валят.
 - [ ] **Seed-loader не в `deploy.sh`:** добавить `docker compose exec -T backend-api python -m shared.db.seed` после `alembic upgrade head` (иначе чистый deploy → пустой `telegram_sources`).
 - [ ] **`backend/seeds/keyword_triggers.yaml` — фактически 28 триггеров, не 33.** Сверить с ТЗ.
