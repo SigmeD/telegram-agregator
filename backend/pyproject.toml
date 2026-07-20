@@ -37,7 +37,7 @@ dependencies = [
     "sentry-sdk>=1.45,<3.0",
     # Auth helpers
     "pyjwt>=2.8,<3.0",
-    "cryptography>=42.0,<47.0",
+    "cryptography>=42.0,<49.0",
     # Transitive pins (security floor; pulled in by anthropic/openai/sentry-sdk
     # and alembic respectively). Bumped 2026-05-12 to clear trivy HIGH alerts:
     # urllib3 — CVE-2026-44432 (decompression bomb), CVE-2026-44431 (header forward).
