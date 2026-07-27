@@ -19,7 +19,7 @@ jobs:
     name: gitleaks (secret scan)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
@@ -34,7 +34,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v3
         with:
           version: "0.5.x"
@@ -56,7 +56,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
         with:
           version: 9.12.0
@@ -73,7 +73,7 @@ jobs:
     name: trivy (filesystem)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
@@ -101,7 +101,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"

@@ -36,7 +36,7 @@ jobs:
     outputs:
       image_tag: ${{ steps.meta.outputs.primary_tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v4
@@ -85,7 +85,7 @@ jobs:
       name: dev
       url: https://${{ vars.DEV_API_DOMAIN || 'dev-api.example.com' }}/health
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
