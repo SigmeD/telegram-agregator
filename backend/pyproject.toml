@@ -39,7 +39,7 @@ dependencies = [
     # pyjwt        — CVE-2026-48526.
     # cryptography — GHSA-537c-gmf6-5ccf.
     "pyjwt>=2.13.0,<3.0",
-    "cryptography>=48.0.1,<49.0",
+    "cryptography>=48.0.1,<51.0",
     # Transitive pins (security floor; pulled in by anthropic/openai/sentry-sdk,
     # alembic and fastapi respectively). Bumped to clear trivy HIGH alerts:
     # urllib3   — CVE-2026-44432 (decompression bomb), CVE-2026-44431 (header forward).
